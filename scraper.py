@@ -13,20 +13,43 @@ LAST_DATA_FILE = "last_seen.json"
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 
-def send_telegram_message(text):
+def send_telegram_media(file_url, caption):
     if not BOT_TOKEN or not CHAT_ID:
         return
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": text,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": False
-    }
+    
+    file_lower = file_url.lower()
+    
+    # चेक करेंगे कि फाइल PDF है या इमेज (jpg, png, jpeg)
+    if file_lower.endswith(".pdf"):
+        api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument"
+        payload = {
+            "chat_id": CHAT_ID,
+            "document": file_url,
+            "caption": caption,
+            "parse_mode": "HTML"
+        }
+    elif any(file_lower.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"]):
+        api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
+        payload = {
+            "chat_id": CHAT_ID,
+            "photo": file_url,
+            "caption": caption,
+            "parse_mode": "HTML"
+        }
+    else:
+        # अगर नॉर्मल वेब पेज लिंक है (या डायरेक्ट फाइल नहीं है), तो साधारण मैसेज भेजेंगे
+        api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": CHAT_ID,
+            "text": f"{caption}\n\n🔗 <b>लिंक:</b> {file_url}",
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True
+        }
+
     try:
-        requests.post(url, json=payload, timeout=15)
+        requests.post(api_url, json=payload, timeout=20)
     except Exception as e:
-        print("Error:", e)
+        print("Error sending media:", e)
 
 def fetch_all_updates():
     headers = {
@@ -57,6 +80,7 @@ def fetch_all_updates():
                     continue
 
                 full_url = link if link.startswith("http") else f"https://www.vmou.ac.in/{link.lstrip('/')}"
+                
                 if full_url not in seen_links:
                     seen_links.add(full_url)
                     all_updates.append({"title": title, "url": full_url})
@@ -81,18 +105,12 @@ def main():
             last_seen.append(item["url"])
 
     if new_items:
-        for item in new_items[:15]:
-            msg = (
-                f"🚨 <b>VMOU LIVE UPDATE</b> 🚨\n\n"
-                f"📌 <b>विवरण:</b> {item['title']}\n\n"
-                f"🔗 <b>क्लिक करके देखें/डाउनलोड करें:</b> {item['url']}\n\n"
-                f"📢 <i>Join @VmouRajasthan</i>"
+        # एक बार में 4-5 अपडेट्स भेजेगा ताकि सर्वर पर लोड न पड़े
+        for item in new_items[:5]:
+            
+            # आपकी डिमांड के अनुसार कैप्शन पूरी तरह से BOLD अक्षरों में और विज्ञापन लाइन के साथ
+            caption = (
+                f"<b>🚨 VMOU KOTA OFFICIAL UPDATE 🚨</b>\n\n"
+                f"<b>📌 विषय: {item['title']}</b>\n\n"
+                f"<b>✅ VMOU KOTA की अपडेट सबसे पहले Join : @VmouRajasthan</b>"
             )
-            send_telegram_message(msg)
-
-        with open(LAST_DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(last_seen[-300:], f, ensure_ascii=False, indent=2)
-
-if __name__ == "__main__":
-    main()
-  

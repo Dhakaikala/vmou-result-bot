@@ -2,6 +2,10 @@ import os
 import json
 import requests
 from bs4 import BeautifulSoup
+import urllib3
+
+# SSL वार्निंग्स को रोकने के लिए
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 TARGET_URLS = [
     "https://www.vmou.ac.in/notices",
@@ -13,13 +17,21 @@ LAST_DATA_FILE = "last_seen.json"
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 
-def send_telegram_media(file_url, caption):
+def send_telegram_media(file_url, title):
     if not BOT_TOKEN or not CHAT_ID:
+        print("⚠️ Bot Token or Chat ID missing!")
         return
+    
+    # आपकी डिमांड के अनुसार पूरा कैप्शन और विज्ञापन लाइन बिल्कुल BOLD अक्षरों में
+    caption = (
+        f"<b>🚨 VMOU KOTA OFFICIAL UPDATE 🚨</b>\n\n"
+        f"<b>📌 विषय: {title}</b>\n\n"
+        f"<b>✅ VMOU KOTA की अपडेट सबसे पहले Join : @VmouRajasthan</b>"
+    )
     
     file_lower = file_url.lower()
     
-    # चेक करेंगे कि फाइल PDF है या इमेज (jpg, png, jpeg)
+    # 1. अगर फाइल PDF है तो document की तरह भेजेगा
     if file_lower.endswith(".pdf"):
         api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument"
         payload = {
@@ -28,6 +40,7 @@ def send_telegram_media(file_url, caption):
             "caption": caption,
             "parse_mode": "HTML"
         }
+    # 2. अगर इमेज है तो photo की तरह भेजेगा
     elif any(file_lower.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"]):
         api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
         payload = {
@@ -36,20 +49,25 @@ def send_telegram_media(file_url, caption):
             "caption": caption,
             "parse_mode": "HTML"
         }
+    # 3. अगर नॉर्मल लिंक या वेबपेज है तो टेक्स्ट मैसेज के साथ लिंक भेजेगा
     else:
-        # अगर नॉर्मल वेब पेज लिंक है (या डायरेक्ट फाइल नहीं है), तो साधारण मैसेज भेजेंगे
         api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        # लिंक को भी बोल्ड फॉर्मेट में सेट किया है
         payload = {
             "chat_id": CHAT_ID,
-            "text": f"{caption}\n\n🔗 <b>लिंक:</b> {file_url}",
+            "text": f"{caption}\n\n<b>🔗 डायरेक्ट लिंक: <a href='{file_url}'>यहाँ क्लिक करें</a></b>",
             "parse_mode": "HTML",
-            "disable_web_page_preview": True
+            "disable_web_page_preview": False
         }
 
     try:
-        requests.post(api_url, json=payload, timeout=20)
+        response = requests.post(api_url, json=payload, timeout=25)
+        if response.status_code == 200:
+            print(f"✅ Successfully sent: {title}")
+        else:
+            print(f"❌ Telegram API Error: {response.text}")
     except Exception as e:
-        print("Error sending media:", e)
+        print("Error sending to telegram:", e)
 
 def fetch_all_updates():
     headers = {
@@ -61,7 +79,7 @@ def fetch_all_updates():
 
     for url in TARGET_URLS:
         try:
-            res = requests.get(url, headers=headers, timeout=20)
+            res = requests.get(url, headers=headers, verify=False, timeout=20)
             if res.status_code != 200:
                 continue
             soup = BeautifulSoup(res.text, "html.parser")
@@ -85,7 +103,7 @@ def fetch_all_updates():
                     seen_links.add(full_url)
                     all_updates.append({"title": title, "url": full_url})
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error fetching {url}: {e}")
     return all_updates
 
 def main():
@@ -100,17 +118,22 @@ def main():
     current_updates = fetch_all_updates()
     new_items = [item for item in current_updates if item["url"] not in last_seen]
 
+    # सभी वर्तमान लिंक्स को last_seen में जोड़ लें ताकि पुराने मैसेज बार-बार न आएं
     for item in current_updates:
         if item["url"] not in last_seen:
             last_seen.append(item["url"])
 
+    # इतिहास को सेव करें (ताकि बोट को याद रहे)
+    with open(LAST_DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(last_seen[-1000:], f, ensure_ascii=False, indent=2)
+
     if new_items:
-        # एक बार में 4-5 अपडेट्स भेजेगा ताकि सर्वर पर लोड न पड़े
+        print(f"Found {len(new_items)} new updates. Sending to Telegram...")
+        # एक बार में अधिकतम 4-5 अपडेट्स भेजेगा ताकि टेलीग्राम सर्वर ब्लॉक न करे
         for item in new_items[:5]:
-            
-            # आपकी डिमांड के अनुसार कैप्शन पूरी तरह से BOLD अक्षरों में और विज्ञापन लाइन के साथ
-            caption = (
-                f"<b>🚨 VMOU KOTA OFFICIAL UPDATE 🚨</b>\n\n"
-                f"<b>📌 विषय: {item['title']}</b>\n\n"
-                f"<b>✅ VMOU KOTA की अपडेट सबसे पहले Join : @VmouRajasthan</b>"
-            )
+            send_telegram_media(item['url'], item['title'])
+    else:
+        print("No new updates found.")
+
+if __name__ == "__main__":
+    main()

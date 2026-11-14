@@ -2,37 +2,39 @@ name: VMOU Instant Universal Tracker
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
-  workflow_dispatch:
+    - cron: '*/30 * * * *' # हर 30 मिनट में ऑटोमैटिक वेबसाइट चेक करेगा
+  workflow_dispatch:       # आप जब चाहें मैन्युअली भी Run कर सकते हैं
+
+permissions:
+  contents: write          # last_seen.json को सेव रखने के लिए जरूरी
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install requests beautifulsoup4
 
-      - name: Run Scraper
+      - name: Run VMOU Scraper
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
+          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
         run: python scraper.py
 
-      - name: Commit and push changes
+      - name: Save history
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add last_seen.json || true
-          git commit -m "Auto-update latest VMOU tracker state" || true
-          git push || true
-          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add last_seen.json
+          git commit -m "Update last seen updates history" || exit 0
+          git push

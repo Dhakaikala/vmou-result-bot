@@ -1,139 +1,274 @@
-import os
+import asyncio
 import json
+import os
+import threading
 import requests
 from bs4 import BeautifulSoup
-import urllib3
+from flask import Flask
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
-# SSL वार्निंग्स को रोकने के लिए
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# आपकी बॉट और चैनल डिटेल्स
+TELEGRAM_BOT_TOKEN = "YOUR_VMOU_BOT_TOKEN_HERE"  # अपना बोट टोकन यहाँ डालें
+CHANNEL_USERNAME = "@YourVMOUChannel"  # अपना टेलीग्राम चैनल यूजरनेम यहाँ डालें
 
+DB_FILE = "vmou_strict_db.json"
+
+# जिन दो मुख्य लिंक्स को यह बोट लगातार ट्रैक करेगा
 TARGET_URLS = [
-    "https://www.vmou.ac.in/notices",
-    "https://www.vmou.ac.in",
-    "https://www.vmou.ac.in/examination"
+    "https://www.vmou.ac.in/",
+    "https://online.vmou.ac.in/results.aspx",
 ]
-LAST_DATA_FILE = "last_seen.json"
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHAT_ID = os.environ.get("CHAT_ID")
 
-def send_telegram_media(file_url, title):
-    if not BOT_TOKEN or not CHAT_ID:
-        print("⚠️ Bot Token or Chat ID missing!")
-        return
-    
-    # आपकी डिमांड के अनुसार पूरा कैप्शन और विज्ञापन लाइन बिल्कुल BOLD अक्षरों में
-    caption = (
-        f"<b>🚨 VMOU KOTA OFFICIAL UPDATE 🚨</b>\n\n"
-        f"<b>📌 विषय: {title}</b>\n\n"
-        f"<b>✅ VMOU KOTA की अपडेट सबसे पहले Join : @VmouRajasthan</b>"
-    )
-    
-    file_lower = file_url.lower()
-    
-    # 1. अगर फाइल PDF है तो document की तरह भेजेगा
-    if file_lower.endswith(".pdf"):
-        api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument"
-        payload = {
-            "chat_id": CHAT_ID,
-            "document": file_url,
-            "caption": caption,
-            "parse_mode": "HTML"
-        }
-    # 2. अगर इमेज है तो photo की तरह भेजेगा
-    elif any(file_lower.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"]):
-        api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
-        payload = {
-            "chat_id": CHAT_ID,
-            "photo": file_url,
-            "caption": caption,
-            "parse_mode": "HTML"
-        }
-    # 3. अगर नॉर्मल लिंक या वेबपेज है तो टेक्स्ट मैसेज के साथ लिंक भेजेगा
-    else:
-        api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        # लिंक को भी बोल्ड फॉर्मेट में सेट किया है
-        payload = {
-            "chat_id": CHAT_ID,
-            "text": f"{caption}\n\n<b>🔗 डायरेक्ट लिंक: <a href='{file_url}'>यहाँ क्लिक करें</a></b>",
-            "parse_mode": "HTML",
-            "disable_web_page_preview": False
-        }
-
+def load_saved_data():
+  if os.path.exists(DB_FILE):
     try:
-        response = requests.post(api_url, json=payload, timeout=25)
-        if response.status_code == 200:
-            print(f"✅ Successfully sent: {title}")
-        else:
-            print(f"❌ Telegram API Error: {response.text}")
+      with open(DB_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+    except Exception:
+      pass
+  return []
+
+
+def save_data_to_file(data_list):
+  try:
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+      json.dump(data_list, f, ensure_ascii=False, indent=4)
+  except Exception as e:
+    print(f"Database save error: {e}")
+
+
+CACHED_ITEMS = load_saved_data()
+SEEN_TITLES = {item["title"] for item in CACHED_ITEMS}
+
+app = Flask(__name__)
+
+
+@app.route("/")
+def home():
+  return f"VMOU Multi-URL Strict Tracker Active! Total Tracked: {len(CACHED_ITEMS)}"
+
+
+def run_flask():
+  port = int(os.environ.get("PORT", 10000))
+  app.run(host="0.0.0.0", port=port)
+
+
+# दोनों वेबसाइट्स से हर छोटे-बड़े अपडेट, रिजल्ट और PDF को स्कैन करने का फंक्शन
+def fetch_vmou_strict_updates():
+  new_updates = []
+  headers = {
+      "User-Agent": (
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,"
+          " like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      )
+  }
+
+  for url in TARGET_URLS:
+    try:
+      response = requests.get(url, headers=headers, timeout=12)
+      if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # 1. सभी लिंक्स और PDF को स्कैन करना
+        for a in soup.find_all("a", href=True):
+          title = a.get_text(strip=True)
+          href = a["href"]
+
+          if len(title) > 4:
+            # पूर्ण लिंक बनाना
+            if href.startswith("http"):
+              full_url = href
+            elif href.startswith("/"):
+              # डोमेन एक्सट्रेक्ट करना
+              base_domain = "https://www.vmou.ac.in" if "vmou.ac.in" in url else "https://online.vmou.ac.in"
+              full_url = base_domain + href
+            else:
+              full_url = url + href
+
+            # यदि कोई भी नया रिजल्ट, नोटिस या PDF मिलता है
+            if title not in SEEN_TITLES:
+              new_updates.append({
+                  "title": title,
+                  "url": full_url,
+                  "source": url,
+              })
+
+        # 2. टेबल्स से रिजल्ट्स या घोषणाओं को निकालना (खासकर results.aspx के लिए)
+        for tr in soup.find_all("tr"):
+          cols = [td.get_text(strip=True) for td in tr.find_all(["td", "th"])]
+          row_text = " - ".join([c for c in cols if c])
+          if len(row_text) > 8:
+            if row_text not in SEEN_TITLES:
+              new_updates.append({
+                  "title": row_text,
+                  "url": url,
+                  "source": url,
+              })
+
     except Exception as e:
-        print("Error sending to telegram:", e)
+      print(f"Error fetching {url}: {e}")
 
-def fetch_all_updates():
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-    }
-    all_updates = []
-    seen_links = set()
-    skip_texts = ["home", "skip to main", "screen reader", "sitemap", "login", "contact us"]
+  return new_updates
 
-    for url in TARGET_URLS:
-        try:
-            res = requests.get(url, headers=headers, verify=False, timeout=20)
-            if res.status_code != 200:
-                continue
-            soup = BeautifulSoup(res.text, "html.parser")
-            for element in soup(["header", "footer", "nav", "script", "style"]):
-                element.decompose()
 
-            for a_tag in soup.find_all("a", href=True):
-                title = " ".join(a_tag.get_text(strip=True).split())
-                link = a_tag["href"].strip()
+# बैकग्राउंड वर्कर जो लगातार नजर रखेगा और चैनल पर विज्ञापन/कैप्शन के साथ पोस्ट करेगा
+async def background_tracker(application):
+  global CACHED_ITEMS, SEEN_TITLES
 
-                if not title or len(title) < 8:
-                    continue
-                if any(word in title.lower() for word in skip_texts):
-                    continue
-                if link.startswith("#") or link.startswith("javascript:") or link.startswith("mailto:"):
-                    continue
+  while True:
+    loop = asyncio.get_running_loop()
+    updates = await loop.run_in_executor(None, fetch_vmou_strict_updates)
 
-                full_url = link if link.startswith("http") else f"https://www.vmou.ac.in/{link.lstrip('/')}"
-                
-                if full_url not in seen_links:
-                    seen_links.add(full_url)
-                    all_updates.append({"title": title, "url": full_url})
-        except Exception as e:
-            print(f"Error fetching {url}: {e}")
-    return all_updates
+    if updates:
+      updated_flag = False
+      for item in updates:
+        title = item["title"]
+        link = item["url"]
+
+        if title not in SEEN_TITLES:
+          SEEN_TITLES.add(title)
+          CACHED_ITEMS.insert(0, item)
+          updated_flag = True
+
+          try:
+            # विज्ञापन लाइन और खूबसूरत कैप्शन के साथ मैसेज फॉर्मेट
+            channel_msg = (
+                "🚨 **VMOU LIVE UPDATE / RESULT DECLARED!** 📚\n\n"
+                f"📌 **विवरण:** {title}\n\n"
+                f"🔗 **डायरेक्ट लिंक / पोर्टल:**\n{link}\n\n"
+                "──────────────────────────\n"
+                "📢 **सबसे तेज़ और पल-पल की अपडेट्स के लिए तुरंत ज्वाइन करें:**\n"
+                f"👉 {CHANNEL_USERNAME}\n"
+                "⚡ *हर नया नोटिस, रिजल्ट और पीडीएफ सबसे पहले यहाँ मिलेगा!*"
+            )
+
+            # अगर अपडेट में डायरेक्ट PDF फाइल है, तो उसे डॉक्यूमेंट के रूप में भेजें
+            if ".pdf" in link.lower():
+              await application.bot.send_document(
+                  chat_id=CHANNEL_USERNAME,
+                  document=link,
+                  caption=channel_msg,
+                  parse_mode="Markdown",
+              )
+            else:
+              await application.bot.send_message(
+                  chat_id=CHANNEL_USERNAME,
+                  text=channel_msg,
+                  parse_mode="Markdown",
+                  disable_web_page_preview=False,
+              )
+          except Exception as e:
+            print(f"Telegram posting error: {e}")
+
+      if updated_flag:
+        save_data_to_file(CACHED_ITEMS)
+
+    # हर 3 मिनट में दोनों वेबसाइट्स की जाँच करेगा ताकि एक सेकंड की भी देरी न हो
+    await asyncio.sleep(180)
+
+
+async def post_init(application):
+  asyncio.create_task(background_tracker(application))
+
+
+# /start कमांड
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  user_name = (
+      update.effective_user.first_name
+      if update.effective_user
+      else "Student"
+  )
+  welcome_text = (
+      f"Radhe Radhe {user_name} ji! 🙏\n\n"
+      "🎓 **VMOU Strict Multi-URL Tracker Bot**\n"
+      "⚡ `vmou.ac.in` और `online.vmou.ac.in/results.aspx` पर हर छोटी-बड़ी अपडेट पर नजर रखे हुए है।\n\n"
+      "👇 नीचे दिए गए बटन से ताज़ा अपडेट्स देखें:"
+  )
+
+  keyboard = [
+      [
+          InlineKeyboardButton(
+              "📋 Latest Live Updates", callback_data="get_live"
+          )
+      ],
+      [
+          InlineKeyboardButton(
+              "📢 Join Official Channel", url="https://t.me/YourVMOUChannel"
+          )
+      ],
+  ]
+  reply_markup = InlineKeyboardMarkup(keyboard)
+
+  if update.message:
+    await update.message.reply_text(
+        welcome_text, reply_markup=reply_markup, parse_mode="Markdown"
+    )
+  elif update.callback_query:
+    await update.callback_query.message.edit_text(
+        welcome_text, reply_markup=reply_markup, parse_mode="Markdown"
+    )
+
+
+# बटन हैंडलर
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  query = update.callback_query
+  await query.answer()
+  data = query.data
+
+  back_keyboard = InlineKeyboardMarkup(
+      [[InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]]
+  )
+
+  if data == "get_live":
+    text = "📚 **VMOU Tracked Live Updates & Results:**\n\n"
+    items = (
+        CACHED_ITEMS[:12] if CACHED_ITEMS else fetch_vmou_strict_updates()
+    )
+
+    if items:
+      for i, item in enumerate(items[:10], 1):
+        text += f"📌 {i}. [{item['title']}]({item['url']})\n\n"
+    else:
+      text = "⚠️ अभी कोई नया डेटा सिंक नहीं हुआ है।"
+
+    await query.message.edit_text(
+        text,
+        reply_markup=back_keyboard,
+        parse_mode="Markdown",
+        disable_web_page_preview=True,
+    )
+
+  elif data == "main_menu":
+    await start(update, context)
+
 
 def main():
-    last_seen = []
-    if os.path.exists(LAST_DATA_FILE):
-        with open(LAST_DATA_FILE, "r", encoding="utf-8") as f:
-            try:
-                last_seen = json.load(f)
-            except:
-                last_seen = []
+  flask_thread = threading.Thread(target=run_flask)
+  flask_thread.daemon = True
+  flask_thread.start()
 
-    current_updates = fetch_all_updates()
-    new_items = [item for item in current_updates if item["url"] not in last_seen]
+  application = (
+      ApplicationBuilder()
+      .token(TELEGRAM_BOT_TOKEN)
+      .post_init(post_init)
+      .build()
+  )
 
-    # सभी वर्तमान लिंक्स को last_seen में जोड़ लें ताकि पुराने मैसेज बार-बार न आएं
-    for item in current_updates:
-        if item["url"] not in last_seen:
-            last_seen.append(item["url"])
+  application.add_handler(CommandHandler("start", start))
+  application.add_handler(CallbackQueryHandler(button_handler))
 
-    # इतिहास को सेव करें (ताकि बोट को याद रहे)
-    with open(LAST_DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(last_seen[-1000:], f, ensure_ascii=False, indent=2)
+  print("VMOU Multi-URL Strict Tracker is live...")
+  application.run_polling()
 
-    if new_items:
-        print(f"Found {len(new_items)} new updates. Sending to Telegram...")
-        # एक बार में अधिकतम 4-5 अपडेट्स भेजेगा ताकि टेलीग्राम सर्वर ब्लॉक न करे
-        for item in new_items[:5]:
-            send_telegram_media(item['url'], item['title'])
-    else:
-        print("No new updates found.")
 
 if __name__ == "__main__":
-    main()
+  main()

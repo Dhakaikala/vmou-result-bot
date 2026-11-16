@@ -4,12 +4,12 @@ import requests
 from bs4 import BeautifulSoup
 import urllib3
 
-# SSL वार्निंग को बंद करने के लिए
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# यहाँ अपनी असली टेलीग्राम बॉट डिटेल्स और चैनल यूजरनेम डालें
+# यहाँ अपना टेलीग्राम बॉट टोकन डालें
 TELEGRAM_BOT_TOKEN = "YOUR_VMOU_BOT_TOKEN_HERE"
-CHANNEL_USERNAME = "@YourVMOUChannel"
+# अपना चैनल यूजरनेम (जैसे @VmouRajasthan) यहाँ डालें
+CHANNEL_USERNAME = "@VmouRajasthan"
 
 TARGET_URLS = [
     "https://www.vmou.ac.in/",
@@ -23,7 +23,9 @@ def load_history():
   if os.path.exists(HISTORY_FILE):
     try:
       with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+        if isinstance(data, list):
+          return [item for item in data if isinstance(item, dict) and "title" in item]
     except Exception:
       pass
   return []
@@ -41,15 +43,13 @@ def send_telegram_alert(title, link):
   try:
     api_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/"
     
-    # साधारण टेक्स्ट फॉर्मेट (ताकि Markdown के किसी सिंबल से मैसेज फेल न हो)
+    # एकदम शॉर्ट, आकर्षक कैप्शन और आपकी बताई हुई विज्ञापन लाइन
     message = (
-        f"🚨 VMOU LIVE UPDATE / RESULT DECLARED! 📚\n\n"
-        f"📌 विवरण: {title}\n\n"
-        f"🔗 डायरेक्ट लिंक / पोर्टल:\n{link}\n\n"
+        f"🚨 **VMOU NEW UPDATE / RESULT!** 🎓\n\n"
+        f"📌 **{title}**\n\n"
+        f"🔗 **डाउनलोड / चेक लिंक:**\n{link}\n\n"
         "──────────────────────────\n"
-        "📢 सबसे तेज़ और पल-पल की अपडेट्स के लिए तुरंत ज्वाइन करें:\n"
-        f"👉 {CHANNEL_USERNAME}\n"
-        "⚡ हर नया नोटिस, रिजल्ट और पीडीएफ सबसे पहले यहाँ मिलेगा!"
+        f"✅ VMOU KOTA की अपडेट सबसे पहले Join : {CHANNEL_USERNAME}"
     )
 
     if ".pdf" in link.lower():
@@ -57,23 +57,25 @@ def send_telegram_alert(title, link):
           "chat_id": CHANNEL_USERNAME,
           "document": link,
           "caption": message,
+          "parse_mode": "Markdown",
       }
-      res = requests.post(api_url + "sendDocument", data=payload, timeout=15)
+      requests.post(api_url + "sendDocument", data=payload, timeout=15)
     else:
       payload = {
           "chat_id": CHANNEL_USERNAME,
           "text": message,
+          "parse_mode": "Markdown",
           "disable_web_page_preview": False,
       }
-      res = requests.post(api_url + "sendMessage", data=payload, timeout=15)
-    print("Telegram API Response:", res.text)
+      requests.post(api_url + "sendMessage", data=payload, timeout=15)
   except Exception as e:
     print(f"Telegram send error: {e}")
 
 
 def scrape_vmou():
   seen_items = load_history()
-  seen_titles = {item["title"] for item in seen_items}
+  seen_titles = {item.get("title") for item in seen_items if isinstance(item, dict)}
+  
   headers = {
       "User-Agent": (
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,"
@@ -85,7 +87,6 @@ def scrape_vmou():
 
   for url in TARGET_URLS:
     try:
-      # verify=False जोड़ने से VMOU वेबसाइट का SSL एरर नहीं आएगा
       response = requests.get(url, headers=headers, timeout=20, verify=False)
       if response.status_code == 200:
         soup = BeautifulSoup(response.text, "html.parser")
@@ -135,4 +136,3 @@ def scrape_vmou():
 
 if __name__ == "__main__":
   scrape_vmou()
-    

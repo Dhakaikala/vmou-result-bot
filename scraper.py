@@ -12,7 +12,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 TELEGRAM_BOT_TOKEN = "9099367147:AAEIZMehH4Sw45u2Vj3XfvyL693Rn73C6l8"
 CHANNEL_USERNAME = "@VmouRajasthan"
 
-# VMOU के सभी 6 आधिकारिक पोर्टल
+# VMOU के सभी आधिकारिक पोर्टल्स
 TARGET_URLS = [
     "https://www.vmou.ac.in/",
     "https://online.vmou.ac.in/results.aspx",
@@ -55,7 +55,6 @@ def send_telegram_alert(title, link):
     safe_title = html.escape(title)
     safe_link = html.escape(link)
 
-    # शॉर्ट, आकर्षक और बोल्ड (Bold) कैप्शन + विज्ञापन लाइन
     message = (
         f"🚨 <b>VMOU KOTA NEW UPDATE / RESULT!</b> 🎓\n\n"
         f"📌 <b>{safe_title}</b>\n\n"
@@ -64,7 +63,7 @@ def send_telegram_alert(title, link):
         f"✅ <b>VMOU KOTA की अपडेट सबसे पहले Join : {CHANNEL_USERNAME}</b>"
     )
 
-    if ".pdf" in link.lower():
+    if ".pdf" in link.lower() or "pdf" in link.lower():
       payload = {
           "chat_id": CHANNEL_USERNAME,
           "document": link,
@@ -104,40 +103,47 @@ def scrape_vmou():
 
   for url in TARGET_URLS:
     try:
-      response = requests.get(url, headers=headers, timeout=20, verify=False)
+      response = requests.get(url, headers=headers, timeout=25, verify=False)
       if response.status_code == 200:
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # 1. सभी लिंक्स और PDF स्कैन करना
-        for a in soup.find_all("a", href=True):
-          title = " ".join(a.get_text(strip=True).split())
-          href = a["href"].strip()
+        # 1. वेबसाइट के हर हिस्से (Div, Span, Paragraph) जहाँ कोई भी नया टेक्स्ट या नोटिस हो
+        for tag in soup.find_all(["a", "marquee", "li", "span", "p"]):
+          title = " ".join(tag.get_text(strip=True).split())
+          href = tag.get("href", "").strip() if tag.name == "a" else ""
 
-          if len(title) > 5 and not href.startswith("javascript:"):
-            full_url = urljoin(url, href)
+          if len(title) > 6 and not title.lower().startswith("http"):
+            # अगर कोई लिंक है तो उसे उठाएं, नहीं तो मुख्य पेज का लिंक दें
+            full_url = urljoin(url, href) if href else url
 
             if title not in seen_titles:
               new_found.append({"title": title, "url": full_url})
               seen_titles.add(title)
 
-        # 2. टेबल्स से रिजल्ट्स या घोषणाएं निकालना
-        for tr in soup.find_all("tr"):
-          cols = [
-              " ".join(td.get_text(strip=True).split())
-              for td in tr.find_all(["td", "th"])
-          ]
-          row_text = " - ".join([c for c in cols if c])
-          if len(row_text) > 10:
-            if row_text not in seen_titles:
-              new_found.append({"title": row_text, "url": url})
-              seen_titles.add(row_text)
+        # 2. वेबसाइट की सभी टेबल्स (जैसे रिजल्ट या टाइम टेबल की सारणी) को स्कैन करना
+        for table in soup.find_all("table"):
+          for tr in table.find_all("tr"):
+            cols = [
+                " ".join(td.get_text(strip=True).split())
+                for td in tr.find_all(["td", "th"])
+            ]
+            if len(cols) >= 1:
+              row_text = " | ".join([c for c in cols if c])
+              if len(row_text) > 8 and row_text not in seen_titles:
+                link_tag = tr.find("a", href=True)
+                item_url = (
+                    urljoin(url, link_tag["href"]) if link_tag else url
+                )
+
+                new_found.append({"title": row_text, "url": item_url})
+                seen_titles.add(row_text)
 
     except Exception as e:
       print(f"Error scraping {url}: {e}")
 
   if new_found:
     updated_history = new_found + seen_items
-    save_history(updated_history[:350])
+    save_history(updated_history[:500])
 
     for item in reversed(new_found):
       send_telegram_alert(item["title"], item["url"])

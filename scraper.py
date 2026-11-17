@@ -120,4 +120,31 @@ def scrape_vmou():
               new_found.append({"title": title, "url": full_url})
               seen_titles.add(title)
 
-        #
+        # 2. टेबल्स से रिजल्ट्स या घोषणाएं निकालना
+        for tr in soup.find_all("tr"):
+          cols = [
+              " ".join(td.get_text(strip=True).split())
+              for td in tr.find_all(["td", "th"])
+          ]
+          row_text = " - ".join([c for c in cols if c])
+          if len(row_text) > 10:
+            if row_text not in seen_titles:
+              new_found.append({"title": row_text, "url": url})
+              seen_titles.add(row_text)
+
+    except Exception as e:
+      print(f"Error scraping {url}: {e}")
+
+  if new_found:
+    updated_history = new_found + seen_items
+    save_history(updated_history[:350])
+
+    for item in reversed(new_found):
+      send_telegram_alert(item["title"], item["url"])
+      print(f"Posted: {item['title']}")
+  else:
+    print("No new updates found.")
+
+
+if __name__ == "__main__":
+  scrape_vmou()

@@ -1,5 +1,229 @@
 [
     {
+        "title": "Skip to main content",
+        "url": "https://www.vmou.ac.in/#main-content"
+    },
+    {
+        "title": "UNIVERSITY",
+        "url": "https://www.vmou.ac.in/#"
+    },
+    {
+        "title": "GOVERNANCE",
+        "url": "https://www.vmou.ac.in/#"
+    },
+    {
+        "title": "ACT-STATUTES-ORDINANCES",
+        "url": "https://www.vmou.ac.in/act"
+    },
+    {
+        "title": "CHANCELLOR",
+        "url": "https://www.vmou.ac.in/hc"
+    },
+    {
+        "title": "VICE CHANCELLOR",
+        "url": "https://www.vmou.ac.in/vc"
+    },
+    {
+        "title": "BOARD OF MANAGEMENT",
+        "url": "https://www.vmou.ac.in/members"
+    },
+    {
+        "title": "ACADEMIC COUNCIL",
+        "url": "https://www.vmou.ac.in/members"
+    },
+    {
+        "title": "FINANCE COMMITEE",
+        "url": "https://www.vmou.ac.in/members"
+    },
+    {
+        "title": "PLANNING BOARD",
+        "url": "https://www.vmou.ac.in/members"
+    },
+    {
+        "title": "STATUTORY BODIES MINUTES",
+        "url": "https://www.vmou.ac.in/#"
+    },
+    {
+        "title": "FORMER VCS",
+        "url": "https://www.vmou.ac.in/vcs"
+    },
+    {
+        "title": "ABOUT UNIVERSITY (VMOU)",
+        "url": "https://www.vmou.ac.in/about-vmou"
+    },
+    {
+        "title": "UNIVERSITY KULGEET",
+        "url": "https://www.vmou.ac.in/kulgeet"
+    },
+    {
+        "title": "RECOGNITION LETTERS",
+        "url": "https://www.vmou.ac.in/recognition-letters"
+    },
+    {
+        "title": "IMPORTANT LETTERS",
+        "url": "https://www.vmou.ac.in/important-letters"
+    },
+    {
+        "title": "ANNUAL REPORT",
+        "url": "https://www.vmou.ac.in/annual-report"
+    },
+    {
+        "title": "UGC APPROVED PROGRAMMES",
+        "url": "https://www.vmou.ac.in/recognition-letters"
+    },
+    {
+        "title": "STUDENT ADMISSION DATA",
+        "url": "https://www.vmou.ac.in/admission-data"
+    },
+    {
+        "title": "DEPARTMENTS",
+        "url": "https://online.vmou.ac.in/Departments.aspx"
+    },
+    {
+        "title": "NODAL OFFICERS",
+        "url": "https://www.vmou.ac.in/#"
+    },
+    {
+        "title": "CENTRAL LIBRARY",
+        "url": "https://www.vmou.ac.in/central-library"
+    },
+    {
+        "title": "RESEARCH - DEVELOPMENT",
+        "url": "https://www.vmou.ac.in/rnd"
+    },
+    {
+        "title": "STUDENT E-CORNER",
+        "url": "https://www.vmou.ac.in/#"
+    },
+    {
+        "title": "ADMISSION CORNER",
+        "url": "https://www.vmou.ac.in/#"
+    },
+    {
+        "title": "ADMISSION ANNOUNCEMENTS",
+        "url": "https://www.vmou.ac.in/notices-admission"
+    },
+    {
+        "title": "E-PROSPECTUS",
+        "url": "https://www.vmou.ac.in/prospectus"
+    },
+    {
+        "title": "FIRST YEAR / FRESH ADMISSION",
+        "url": "https://online.vmou.ac.in/onlineadmission.aspx"
+    },
+    {
+        "title": "SECOND / THIRD YEAR ADMISSION",
+        "url": "https://online.vmou.ac.in/onlineadmission.aspx"
+    },
+    {
+        "title": "INCOMPLETE / PRINT FORM",
+        "url": "https://online.vmou.ac.in/OnlineAdmissionPrint.aspx"
+    },
+    {
+        "title": "PRINT FEE RECEIPT",
+        "url": "https://online.vmou.ac.in/FeeReceipt.aspx"
+    },
+    {
+        "title": "TRACK ADMISSION STATUS",
+        "url": "https://online.vmou.ac.in/OnlineAdmission_Statusway.aspx"
+    },
+    {
+        "title": "UPLOAD ADDITIONAL DOCUMENTS",
+        "url": "https://online.vmou.ac.in/UploadDocs.aspx"
+    },
+    {
+        "title": "APPLICATION FORM CORRECTIONS",
+        "url": "https://online.vmou.ac.in/CorrectionForm.aspx"
+    },
+    {
+        "title": "ENTRANCE TEST PHD-BED-MSC-MBA-MCA",
+        "url": "https://vmou.ac.in/notices-entrance"
+    },
+    {
+        "title": "ANSWER KEYS",
+        "url": "https://vmou.ac.in/notices-answer-keys"
+    },
+    {
+        "title": "PRE EXAM LINKS",
+        "url": "https://www.vmou.ac.in/#"
+    },
+    {
+        "title": "EXAM ANNOUNCEMENTS",
+        "url": "https://vmou.ac.in/notices-exam"
+    },
+    {
+        "title": "Admission Status | Track",
+        "url": "https://online.vmou.ac.in/OnlineAdmission_Statusway.aspx"
+    },
+    {
+        "title": "Upload Additional Docs",
+        "url": "https://online.vmou.ac.in/UploadDocs.aspx"
+    },
+    {
+        "title": "Complete / Print Form (Fresh/ New Admission)",
+        "url": "https://online.vmou.ac.in/OnlineAdmissionPrint.aspx"
+    },
+    {
+        "title": "Complete / Print Form (Promotee/ Second/ Third Year Admission)",
+        "url": "https://online.vmou.ac.in/OnlinePromoteeAdmissionPrint.aspx"
+    },
+    {
+        "title": "Print Fee Receipt",
+        "url": "https://online.vmou.ac.in/FeeReceipt.aspx"
+    },
+    {
+        "title": "Exam Announcements",
+        "url": "https://www.vmou.ac.in/notices-exam"
+    },
+    {
+        "title": "Exam Process & Rules",
+        "url": "https://www.vmou.ac.in/notices-exam-rules"
+    },
+    {
+        "title": "Defaulter Exam Form",
+        "url": "https://online.vmou.ac.in/OnlineAdmission.aspx"
+    },
+    {
+        "title": "Exam Time Table",
+        "url": "https://www.vmou.ac.in/exam-time-table"
+    },
+    {
+        "title": "Exam Permission Letter",
+        "url": "https://www.vmou.ac.in/permission-letter"
+    },
+    {
+        "title": "Practical Classes & Exams",
+        "url": "https://www.vmou.ac.in/notices-practical"
+    },
+    {
+        "title": "Question Banks",
+        "url": "https://online.vmou.ac.in/QB.aspx"
+    },
+    {
+        "title": "Old Question Papers",
+        "url": "http://assets.vmou.ac.in/Question%20Papers/"
+    },
+    {
+        "title": "Results",
+        "url": "https://online.vmou.ac.in/results.aspx"
+    },
+    {
+        "title": "Revaluation Form",
+        "url": "https://online.vmou.ac.in/OnlineAdmission.aspx"
+    },
+    {
+        "title": "RSCIT Results",
+        "url": "http://rkcl.vmou.ac.in/"
+    },
+    {
+        "title": "Change Practical Exam City",
+        "url": "https://online.vmou.ac.in/changepecity.aspx"
+    },
+    {
+        "title": "Change Theory Exam City",
+        "url": "https://online.vmou.ac.in/changeecity.aspx"
+    },
+    {
         "title": "CORRECTION OF RECORDS",
         "url": "https://online.vmou.ac.in/CorrectionForm.aspx"
     },
@@ -374,229 +598,5 @@
     {
         "title": "Get Subscribe",
         "url": "https://www.youtube.com/@vmouonline"
-    },
-    {
-        "title": "Holiday Calendar 2025",
-        "url": "https://www.vmou.ac.in/holidays"
-    },
-    {
-        "title": "Departments",
-        "url": "https://online.vmou.ac.in/Departments.aspx"
-    },
-    {
-        "title": "Research - Development",
-        "url": "https://www.vmou.ac.in/research"
-    },
-    {
-        "title": "Central Library",
-        "url": "https://www.vmou.ac.in/central-library"
-    },
-    {
-        "title": "Activity Report of IRCS",
-        "url": "https://www.vmou.ac.in/activity-ircs"
-    },
-    {
-        "title": "Anti-Ragging Committee",
-        "url": "https://www.vmou.ac.in/arc"
-    },
-    {
-        "title": "Internal Compliant Committee",
-        "url": "https://www.vmou.ac.in/icc"
-    },
-    {
-        "title": "Public Relation Cell",
-        "url": "https://www.vmou.ac.in/pr"
-    },
-    {
-        "title": "Minority Cell",
-        "url": "https://www.vmou.ac.in/mc"
-    },
-    {
-        "title": "OBC Cell",
-        "url": "https://www.vmou.ac.in/obc"
-    },
-    {
-        "title": "SC/ST Cell",
-        "url": "https://www.vmou.ac.in/scst"
-    },
-    {
-        "title": "Grievance Cell",
-        "url": "https://www.vmou.ac.in/node/1401"
-    },
-    {
-        "title": "Alumni",
-        "url": "https://www.vmou.ac.in/node/1399"
-    },
-    {
-        "title": "Intranet",
-        "url": "http://intranet.vmou.ac.in/"
-    },
-    {
-        "title": "Sports",
-        "url": "https://vmou.ac.in/sports"
-    },
-    {
-        "title": "Nodal Officer",
-        "url": "https://www.vmou.ac.in/#"
-    },
-    {
-        "title": "Dr. Mayank Gaur",
-        "url": "https://www.vmou.ac.in/emp?emp=3117"
-    },
-    {
-        "title": "Hon'ble ChancellorShri Haribhau Kisanrao Bagde - Vice-ChancellorProf. B. L. Verma",
-        "url": "https://www.vmou.ac.in/"
-    },
-    {
-        "title": "LOKPAL",
-        "url": "https://www.vmou.ac.in/lokpal"
-    },
-    {
-        "title": "University Academic Calendar",
-        "url": "https://www.vmou.ac.in/academic-calendar"
-    },
-    {
-        "title": "UGC-DEB",
-        "url": "https://www.vmou.ac.in/ugc-deb"
-    },
-    {
-        "title": "MEETING MINUTES",
-        "url": "https://www.vmou.ac.in/members"
-    },
-    {
-        "title": "BOM / AC / FC MEMBERS",
-        "url": "https://www.vmou.ac.in/members"
-    },
-    {
-        "title": "WEBINAR/ CONFERENCE",
-        "url": "https://www.vmou.ac.in/academic-activity"
-    },
-    {
-        "title": "TENDERS / QUOTAITONS",
-        "url": "https://www.vmou.ac.in/tenders"
-    },
-    {
-        "title": "छात्र ऑनलाइन संवाद कार्यक्रम",
-        "url": "https://www.vmou.ac.in/osp"
-    },
-    {
-        "title": "Hon'ble Chancellor",
-        "url": "https://www.rajbhawan.rajasthan.gov.in/content/rajbhawan/en/knowthegovernor.html"
-    },
-    {
-        "title": "Shri Haribhau Kisanrao Bagde",
-        "url": "https://vmou.ac.in/sites/default/files/inline-images/HGR.png"
-    },
-    {
-        "title": "Vice-Chancellor",
-        "url": "https://www.vmou.ac.in/#"
-    },
-    {
-        "title": "Prof. B. L. Verma",
-        "url": "https://www.vmou.ac.in/node/1400"
-    },
-    {
-        "title": "Click Here for Admission",
-        "url": "https://online.vmou.ac.in/OnlineAdmission.aspx"
-    },
-    {
-        "title": "Public Self Disclosure",
-        "url": "https://www.vmou.ac.in/node/1403"
-    },
-    {
-        "title": "Learning Management System",
-        "url": "http://45.124.187.0/ilms_vmouk/"
-    },
-    {
-        "title": "RAJ BHAWAN",
-        "url": "https://www.vmou.ac.in/hhttps://www.rajbhawan.rajasthan.gov.in/content/rajbhawan/en.html"
-    },
-    {
-        "title": "UGC e-Samadhan Portal",
-        "url": "https://samadhaan.ugc.ac.in/"
-    },
-    {
-        "title": "DEB ID",
-        "url": "https://deb.ugc.ac.in/StudentDEBId"
-    },
-    {
-        "title": "MY Bharat Portal",
-        "url": "https://mybharat.gov.in/ "
-    },
-    {
-        "title": "NAD | DigiLocker | ABC ID",
-        "url": "https://digilocker.gov.in/login/"
-    },
-    {
-        "title": "NATIONAL DIGITAL LIBRARY",
-        "url": "https://ndl.iitkgp.ac.in/"
-    },
-    {
-        "title": "STATE SCHOLARSHIP",
-        "url": "https://sje.rajasthan.gov.in/"
-    },
-    {
-        "title": "GIRLS SCHOLARSHIP",
-        "url": "https://hte.rajasthan.gov.in/online-scholarship"
-    },
-    {
-        "title": "NATIONAL SCHOLARSHIP",
-        "url": "https://scholarships.gov.in/"
-    },
-    {
-        "title": "University Events",
-        "url": "https://www.vmou.ac.in/#"
-    },
-    {
-        "title": "VMOU IN NEWS",
-        "url": "https://www.vmou.ac.in/#"
-    },
-    {
-        "title": "View Result",
-        "url": "http://rkcl.vmou.ac.in"
-    },
-    {
-        "title": "View Schedule",
-        "url": "https://www.vmou.ac.in/notices-practical"
-    },
-    {
-        "title": "Download",
-        "url": "https://www.vmou.ac.in/permission-letter"
-    },
-    {
-        "title": "Get Enroll",
-        "url": "https://www.vmou.ac.in/admission-quick-links"
-    },
-    {
-        "title": "More Details",
-        "url": "https://www.vmou.ac.in/exam-quick-links"
-    },
-    {
-        "title": "Check Details",
-        "url": "https://online.vmou.ac.in/Admission_Statusway.aspx"
-    },
-    {
-        "title": "Read Me",
-        "url": "https://www.vmou.ac.in/prospectus"
-    },
-    {
-        "title": "Forms | Affidavit |",
-        "url": "https://www.vmou.ac.in/essential-forms"
-    },
-    {
-        "title": "Admission Announcements",
-        "url": "https://www.vmou.ac.in/notices-admission"
-    },
-    {
-        "title": "E-Prospectus",
-        "url": "https://www.vmou.ac.in/prospectus"
-    },
-    {
-        "title": "Programmes",
-        "url": "https://online.vmou.ac.in/ProgrammeDetails.aspx"
-    },
-    {
-        "title": "Apply Online | Last Dates",
-        "url": "https://online.vmou.ac.in/OnlineAdmission.aspx"
     }
 ]

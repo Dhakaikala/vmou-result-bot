@@ -1,5 +1,229 @@
 [
     {
+        "title": "LOKPAL",
+        "url": "https://www.vmou.ac.in/lokpal"
+    },
+    {
+        "title": "University Academic Calendar",
+        "url": "https://www.vmou.ac.in/academic-calendar"
+    },
+    {
+        "title": "UGC-DEB",
+        "url": "https://www.vmou.ac.in/ugc-deb"
+    },
+    {
+        "title": "MEETING MINUTES",
+        "url": "https://www.vmou.ac.in/members"
+    },
+    {
+        "title": "BOM / AC / FC MEMBERS",
+        "url": "https://www.vmou.ac.in/members"
+    },
+    {
+        "title": "WEBINAR/ CONFERENCE",
+        "url": "https://www.vmou.ac.in/academic-activity"
+    },
+    {
+        "title": "TENDERS / QUOTAITONS",
+        "url": "https://www.vmou.ac.in/tenders"
+    },
+    {
+        "title": "छात्र ऑनलाइन संवाद कार्यक्रम",
+        "url": "https://www.vmou.ac.in/osp"
+    },
+    {
+        "title": "Hon'ble Chancellor",
+        "url": "https://www.rajbhawan.rajasthan.gov.in/content/rajbhawan/en/knowthegovernor.html"
+    },
+    {
+        "title": "Shri Haribhau Kisanrao Bagde",
+        "url": "https://vmou.ac.in/sites/default/files/inline-images/HGR.png"
+    },
+    {
+        "title": "Vice-Chancellor",
+        "url": "https://www.vmou.ac.in/#"
+    },
+    {
+        "title": "Prof. B. L. Verma",
+        "url": "https://www.vmou.ac.in/node/1400"
+    },
+    {
+        "title": "Click Here for Admission",
+        "url": "https://online.vmou.ac.in/OnlineAdmission.aspx"
+    },
+    {
+        "title": "Public Self Disclosure",
+        "url": "https://www.vmou.ac.in/node/1403"
+    },
+    {
+        "title": "Learning Management System",
+        "url": "http://45.124.187.0/ilms_vmouk/"
+    },
+    {
+        "title": "RAJ BHAWAN",
+        "url": "https://www.vmou.ac.in/hhttps://www.rajbhawan.rajasthan.gov.in/content/rajbhawan/en.html"
+    },
+    {
+        "title": "UGC e-Samadhan Portal",
+        "url": "https://samadhaan.ugc.ac.in/"
+    },
+    {
+        "title": "DEB ID",
+        "url": "https://deb.ugc.ac.in/StudentDEBId"
+    },
+    {
+        "title": "MY Bharat Portal",
+        "url": "https://mybharat.gov.in/ "
+    },
+    {
+        "title": "NAD | DigiLocker | ABC ID",
+        "url": "https://digilocker.gov.in/login/"
+    },
+    {
+        "title": "NATIONAL DIGITAL LIBRARY",
+        "url": "https://ndl.iitkgp.ac.in/"
+    },
+    {
+        "title": "STATE SCHOLARSHIP",
+        "url": "https://sje.rajasthan.gov.in/"
+    },
+    {
+        "title": "GIRLS SCHOLARSHIP",
+        "url": "https://hte.rajasthan.gov.in/online-scholarship"
+    },
+    {
+        "title": "NATIONAL SCHOLARSHIP",
+        "url": "https://scholarships.gov.in/"
+    },
+    {
+        "title": "University Events",
+        "url": "https://www.vmou.ac.in/#"
+    },
+    {
+        "title": "VMOU IN NEWS",
+        "url": "https://www.vmou.ac.in/#"
+    },
+    {
+        "title": "View Result",
+        "url": "http://rkcl.vmou.ac.in"
+    },
+    {
+        "title": "View Schedule",
+        "url": "https://www.vmou.ac.in/notices-practical"
+    },
+    {
+        "title": "Download",
+        "url": "https://www.vmou.ac.in/permission-letter"
+    },
+    {
+        "title": "Get Enroll",
+        "url": "https://www.vmou.ac.in/admission-quick-links"
+    },
+    {
+        "title": "More Details",
+        "url": "https://www.vmou.ac.in/exam-quick-links"
+    },
+    {
+        "title": "Check Details",
+        "url": "https://online.vmou.ac.in/Admission_Statusway.aspx"
+    },
+    {
+        "title": "Read Me",
+        "url": "https://www.vmou.ac.in/prospectus"
+    },
+    {
+        "title": "Forms | Affidavit |",
+        "url": "https://www.vmou.ac.in/essential-forms"
+    },
+    {
+        "title": "Admission Announcements",
+        "url": "https://www.vmou.ac.in/notices-admission"
+    },
+    {
+        "title": "E-Prospectus",
+        "url": "https://www.vmou.ac.in/prospectus"
+    },
+    {
+        "title": "Programmes",
+        "url": "https://online.vmou.ac.in/ProgrammeDetails.aspx"
+    },
+    {
+        "title": "Apply Online | Last Dates",
+        "url": "https://online.vmou.ac.in/OnlineAdmission.aspx"
+    },
+    {
+        "title": "Admission Status | Track",
+        "url": "https://online.vmou.ac.in/OnlineAdmission_Statusway.aspx"
+    },
+    {
+        "title": "Upload Additional Docs",
+        "url": "https://online.vmou.ac.in/UploadDocs.aspx"
+    },
+    {
+        "title": "Complete / Print Form (Fresh/ New Admission)",
+        "url": "https://online.vmou.ac.in/OnlineAdmissionPrint.aspx"
+    },
+    {
+        "title": "Complete / Print Form (Promotee/ Second/ Third Year Admission)",
+        "url": "https://online.vmou.ac.in/OnlinePromoteeAdmissionPrint.aspx"
+    },
+    {
+        "title": "Print Fee Receipt",
+        "url": "https://online.vmou.ac.in/FeeReceipt.aspx"
+    },
+    {
+        "title": "Exam Announcements",
+        "url": "https://www.vmou.ac.in/notices-exam"
+    },
+    {
+        "title": "Exam Process & Rules",
+        "url": "https://www.vmou.ac.in/notices-exam-rules"
+    },
+    {
+        "title": "Defaulter Exam Form",
+        "url": "https://online.vmou.ac.in/OnlineAdmission.aspx"
+    },
+    {
+        "title": "Exam Time Table",
+        "url": "https://www.vmou.ac.in/exam-time-table"
+    },
+    {
+        "title": "Exam Permission Letter",
+        "url": "https://www.vmou.ac.in/permission-letter"
+    },
+    {
+        "title": "Practical Classes & Exams",
+        "url": "https://www.vmou.ac.in/notices-practical"
+    },
+    {
+        "title": "Question Banks",
+        "url": "https://online.vmou.ac.in/QB.aspx"
+    },
+    {
+        "title": "Old Question Papers",
+        "url": "http://assets.vmou.ac.in/Question%20Papers/"
+    },
+    {
+        "title": "Results",
+        "url": "https://online.vmou.ac.in/results.aspx"
+    },
+    {
+        "title": "Revaluation Form",
+        "url": "https://online.vmou.ac.in/OnlineAdmission.aspx"
+    },
+    {
+        "title": "RSCIT Results",
+        "url": "http://rkcl.vmou.ac.in/"
+    },
+    {
+        "title": "Change Practical Exam City",
+        "url": "https://online.vmou.ac.in/changepecity.aspx"
+    },
+    {
+        "title": "Change Theory Exam City",
+        "url": "https://online.vmou.ac.in/changeecity.aspx"
+    },
+    {
         "title": "Skip to main content",
         "url": "https://www.vmou.ac.in/#main-content"
     },
@@ -374,229 +598,5 @@
     {
         "title": "EDUCATION PROGRAMME",
         "url": "https://online.vmou.ac.in/ProgrammeDetails.aspx"
-    },
-    {
-        "title": "Holiday Calendar 2025",
-        "url": "https://www.vmou.ac.in/holidays"
-    },
-    {
-        "title": "Departments",
-        "url": "https://online.vmou.ac.in/Departments.aspx"
-    },
-    {
-        "title": "Research - Development",
-        "url": "https://www.vmou.ac.in/research"
-    },
-    {
-        "title": "Central Library",
-        "url": "https://www.vmou.ac.in/central-library"
-    },
-    {
-        "title": "Activity Report of IRCS",
-        "url": "https://www.vmou.ac.in/activity-ircs"
-    },
-    {
-        "title": "Anti-Ragging Committee",
-        "url": "https://www.vmou.ac.in/arc"
-    },
-    {
-        "title": "Internal Compliant Committee",
-        "url": "https://www.vmou.ac.in/icc"
-    },
-    {
-        "title": "Public Relation Cell",
-        "url": "https://www.vmou.ac.in/pr"
-    },
-    {
-        "title": "Minority Cell",
-        "url": "https://www.vmou.ac.in/mc"
-    },
-    {
-        "title": "OBC Cell",
-        "url": "https://www.vmou.ac.in/obc"
-    },
-    {
-        "title": "SC/ST Cell",
-        "url": "https://www.vmou.ac.in/scst"
-    },
-    {
-        "title": "Grievance Cell",
-        "url": "https://www.vmou.ac.in/node/1401"
-    },
-    {
-        "title": "Alumni",
-        "url": "https://www.vmou.ac.in/node/1399"
-    },
-    {
-        "title": "Intranet",
-        "url": "http://intranet.vmou.ac.in/"
-    },
-    {
-        "title": "Sports",
-        "url": "https://vmou.ac.in/sports"
-    },
-    {
-        "title": "Nodal Officer",
-        "url": "https://www.vmou.ac.in/#"
-    },
-    {
-        "title": "Dr. Mayank Gaur",
-        "url": "https://www.vmou.ac.in/emp?emp=3117"
-    },
-    {
-        "title": "Hon'ble ChancellorShri Haribhau Kisanrao Bagde - Vice-ChancellorProf. B. L. Verma",
-        "url": "https://www.vmou.ac.in/"
-    },
-    {
-        "title": "MASTER DEGREE PROGRAMME",
-        "url": "https://online.vmou.ac.in/ProgrammeDetails.aspx"
-    },
-    {
-        "title": "MANAGEMENT PROGRAMME",
-        "url": "https://online.vmou.ac.in/ProgrammeDetails.aspx"
-    },
-    {
-        "title": "BACHELOR DEGREE PROGRAMME",
-        "url": "https://online.vmou.ac.in/ProgrammeDetails.aspx"
-    },
-    {
-        "title": "DIPLOMA PROGRAMME",
-        "url": "https://online.vmou.ac.in/ProgrammeDetails.aspx"
-    },
-    {
-        "title": "CERTIFICATE PROGRAMME",
-        "url": "https://online.vmou.ac.in/ProgrammeDetails.aspx"
-    },
-    {
-        "title": "NOTICES",
-        "url": "https://www.vmou.ac.in/#"
-    },
-    {
-        "title": "ADMISSION",
-        "url": "https://www.vmou.ac.in/notices-admission"
-    },
-    {
-        "title": "ENTRANCE EXAM",
-        "url": "https://www.vmou.ac.in/notices-entrance"
-    },
-    {
-        "title": "MBA | MCA | MSC",
-        "url": "https://www.vmou.ac.in/notices-mmm"
-    },
-    {
-        "title": "CONTACT CAMP",
-        "url": "https://www.vmou.ac.in/notices-contact-camp"
-    },
-    {
-        "title": "PRACTICAL CAMP",
-        "url": "https://www.vmou.ac.in/notices-practical"
-    },
-    {
-        "title": "PROJECT",
-        "url": "https://www.vmou.ac.in/notices-project"
-    },
-    {
-        "title": "REVALUATION",
-        "url": "https://www.vmou.ac.in/notices-revaluation"
-    },
-    {
-        "title": "UNFAIR MEANS",
-        "url": "https://www.vmou.ac.in/notices-unfair-means"
-    },
-    {
-        "title": "EXAM RULES",
-        "url": "https://www.vmou.ac.in/notices-exam-rules"
-    },
-    {
-        "title": "CONTACT",
-        "url": "https://www.vmou.ac.in/contacts"
-    },
-    {
-        "title": "HELP DESK",
-        "url": "https://www.vmou.ac.in/contacts"
-    },
-    {
-        "title": "SOCIAL MEDIA",
-        "url": "https://www.vmou.ac.in/#"
-    },
-    {
-        "title": "YOUTUBE CHANNEL",
-        "url": "https://www.youtube.com/@vmouonline"
-    },
-    {
-        "title": "REGISTER COMPLAINTS",
-        "url": "https://online.vmou.ac.in/GrievanceForm.aspx"
-    },
-    {
-        "title": "COMPLAINT'S STATUS",
-        "url": "https://online.vmou.ac.in/GrievanceStatus.aspx"
-    },
-    {
-        "title": "GALLERY",
-        "url": "https://www.vmou.ac.in/gallery"
-    },
-    {
-        "title": "अतिआवश्यक :- सत्रांत परीक्षा जून-2026 की दिनांक 27-08-2026 की स्थगित परीक्षा दिनांक 17-09-2026 को आयोजन करने की सुचना |",
-        "url": "https://www.vmou.ac.in/node/1877"
-    },
-    {
-        "title": "आंतरिक गृह कार्य के संबंध में नोटिस .........",
-        "url": "https://www.vmou.ac.in/node/1610"
-    },
-    {
-        "title": "सभी विद्यार्थियों से अनुरोध है कि भारत सरकार के MY Bharat Portal (मेरा युवा भारत पोर्टल) की पहल के अंतर्गत नशा-मुक्त व विकसित भारत बनाने के लिए QR Code द्वारा ऑनलाइन शपथ कार्यक्रम में अवश्य रूप से प्रतिभाग कर दिशानिर्देशों का पालन करें .........Academic Calendar and Holiday Calendar for 2026-27 Uploaded ...Internship Hiring Drive by Varroc for eligible students.",
-        "url": "https://www.vmou.ac.in/node/#"
-    },
-    {
-        "title": "BLIS/DLIS प्रायोगिक प्रश्नपत्रो की जून 2026 परीक्षा के आयोजन की सूचना बाबत |",
-        "url": "https://www.vmou.ac.in/node/1992"
-    },
-    {
-        "title": "लोकपाल की नियुक्ति की एवं छात्रों की शिकायतों का निवारण हेतु गठित समिति की सूचना |",
-        "url": "https://www.vmou.ac.in/node/1719"
-    },
-    {
-        "title": "प्रवेश के सम्बन्ध में भ्रामक प्रचार प्रसार के सम्बन्ध में राज्य सरकार द्वारा जारी पब्लिक नोटिस दिनांक 23.05.2026",
-        "url": "https://www.vmou.ac.in/node/1710"
-    },
-    {
-        "title": "PRE.D.EL.ED 2026",
-        "url": "https://www.vmou.ac.in/node/1389"
-    },
-    {
-        "title": "PTET-2026",
-        "url": "https://www.vmou.ac.in/node/1543"
-    },
-    {
-        "title": "सत्रांत परीक्षा दिसम्बर-2026 हेतु डिफाल्टर परीक्षा फॉर्म आवेदन की अंतिम तिथि दिनांक 16-11-2026 से बढाकर दिनांक 30-11-2026 तक की जाती है|",
-        "url": "https://www.vmou.ac.in/node/2001"
-    },
-    {
-        "title": "Multidisciplinary International Conference on Digital India and Indigenous Knowledge for Viksit Bharat@2047: Transforming Commerce in the Digital Economy- 17th-18th December, 2026",
-        "url": "https://www.vmou.ac.in/node/1999"
-    },
-    {
-        "title": "Download Permission Letter for TEE JUNE 2026, BLIS-03,04 and DLIS-02,03 Papers",
-        "url": "https://www.vmou.ac.in/node/1994"
-    },
-    {
-        "title": "सत्रांत परीक्षा दिसम्बर -2026 हेतु डिफाल्टर विद्यार्थियों को आवेदन करने की अंतिम तिथि 16-11-2026 सूचना बाबत |",
-        "url": "https://www.vmou.ac.in/node/1984"
-    },
-    {
-        "title": "Online link for submission of Defaulter Exam Form for December 2026 Exam is now open. Apply Now",
-        "url": "https://www.vmou.ac.in/node/1977"
-    },
-    {
-        "title": "Avail Services",
-        "url": "https://online.vmou.ac.in/OnlineAdmission.aspx"
-    },
-    {
-        "title": "View Profile",
-        "url": "https://online.vmou.ac.in/Admission_Statusway.aspx"
-    },
-    {
-        "title": "Get Subscribe",
-        "url": "https://www.youtube.com/@vmouonline"
     }
 ]

@@ -55,9 +55,9 @@ def send_telegram_alert(title, link):
     safe_link = html.escape(link)
 
     message = (
-        f"🚨 <b>VMOU KOTA NEW RESULT DECLARED!</b> 🎓\n\n"
+        f"🚨 <b>VMOU KOTA NEW UPDATE / RESULT!</b> 🎓\n\n"
         f"📌 <b>{safe_title}</b>\n\n"
-        f"🔗 <b>रिजल्ट देखने के लिए यहाँ क्लिक करें:</b>\n{safe_link}\n\n"
+        f"🔗 <b>डायरेक्ट लिंक / चेक करें:</b>\n{safe_link}\n\n"
         "──────────────────────────\n"
         f"✅ <b>VMOU KOTA की अपडेट सबसे पहले Join : {CHANNEL_USERNAME}</b>"
     )
@@ -106,38 +106,34 @@ def scrape_vmou():
       if response.status_code == 200:
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # 1. रिजल्ट टेबल की हर एक पंक्ति (Row) को सीधे पकड़ना (जैसे B.Sc, MA, MBA आदि)
+        # 1. साइट की हर एक टेबल की रो (Row) को बिना किसी शर्त के सीधा उठाना (जैसे रिजल्ट्स)
         for table in soup.find_all("table"):
           for tr in table.find_all("tr"):
             cols = [
                 " ".join(td.get_text(strip=True).split())
                 for td in tr.find_all(["td", "th"])
             ]
-            if len(cols) >= 3:  # अगर टेबल में सीरियल नंबर, कोर्स और डेट है
+            if len(cols) >= 2:
               row_text = " | ".join([c for c in cols if c])
-              if len(row_text) > 10 and row_text not in seen_titles:
-                # सीधा रिजल्ट पेज का यूआरएल दें
+              if len(row_text) > 6 and row_text not in seen_titles:
+                a_tag = tr.find("a", href=True)
                 item_url = (
-                    "https://online.vmou.ac.in/results.aspx"
-                    if "result" in url or "online" in url
-                    else url
+                    urljoin(url, a_tag["href"]) if (a_tag and a_tag.get("href")) else url
                 )
                 new_found.append({"title": row_text, "url": item_url})
                 seen_titles.add(row_text)
 
-        # 2. सामान्य लिंक्स और PDF
-        for a in soup.find_all("a", href=True):
-          title = " ".join(a.get_text(strip=True).split())
-          href = a["href"].strip()
+        # 2. साइट के हर एक टेक्स्ट, लिंक, लिस्ट या नोटिस को बिना रोके उठाना
+        for tag in soup.find_all(
+            ["a", "marquee", "li", "p", "span", "h1", "h2", "h3", "h4", "div"]
+        ):
+          title = " ".join(tag.get_text(strip=True).split())
+          href = tag.get("href", "").strip() if tag.name == "a" else ""
 
-          if (
-              len(title) > 8
-              and not href.startswith("javascript:")
-              and not href.startswith("#")
-          ):
-            full_url = urljoin(url, href)
+          if len(title) > 8 and not title.lower().startswith("http"):
+            item_url = urljoin(url, href) if href else url
             if title not in seen_titles:
-              new_found.append({"title": title, "url": full_url})
+              new_found.append({"title": title, "url": item_url})
               seen_titles.add(title)
 
     except Exception as e:
@@ -145,7 +141,7 @@ def scrape_vmou():
 
   if new_found:
     updated_history = new_found + seen_items
-    save_history(updated_history[:500])
+    save_history(updated_history[:800])
 
     for item in reversed(new_found):
       send_telegram_alert(item["title"], item["url"])

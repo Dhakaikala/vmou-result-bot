@@ -55,9 +55,9 @@ def send_telegram_alert(title, link):
     safe_link = html.escape(link)
 
     message = (
-        f"🚨 <b>VMOU KOTA NEW UPDATE / RESULT!</b> 🎓\n\n"
+        f"🚨 <b>VMOU KOTA NEW RESULT DECLARED!</b> 🎓\n\n"
         f"📌 <b>{safe_title}</b>\n\n"
-        f"🔗 <b>डायरेक्ट लिंक / यहाँ क्लिक करें:</b>\n{safe_link}\n\n"
+        f"🔗 <b>रिजल्ट देखने के लिए यहाँ क्लिक करें:</b>\n{safe_link}\n\n"
         "──────────────────────────\n"
         f"✅ <b>VMOU KOTA की अपडेट सबसे पहले Join : {CHANNEL_USERNAME}</b>"
     )
@@ -99,15 +99,6 @@ def scrape_vmou():
   }
 
   new_found = []
-  ignore_keywords = [
-      "home",
-      "about",
-      "contact",
-      "login",
-      "student zone",
-      "youtube",
-      "facebook",
-  ]
 
   for url in TARGET_URLS:
     try:
@@ -115,73 +106,46 @@ def scrape_vmou():
       if response.status_code == 200:
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # 1. केवल वास्तविक लिंक्स (जिनका अपना अलग यूआरएल या पीडीएफ है) को पकड़ना
-        for a in soup.find_all("a", href=True):
-          title = " ".join(a.get_text(strip=True).split())
-          href = a["href"].strip()
-
-          # यदि लिंक होमपेज या बेस यूआरएल ही है, तो उसे सीधे छोड़ दें
-          if (
-              not href
-              or href.startswith("javascript:")
-              or href.startswith("#")
-              or href == "/"
-              or href == url
-          ):
-            continue
-
-          if len(title) > 8:
-            if any(
-                keyword in title.lower() for keyword in ignore_keywords
-            ):
-              continue
-
-            full_url = urljoin(url, href)
-
-            # सुनिश्चित करें कि लिंक होमपेज का न हो
-            if (
-                full_url.rstrip("/") == "https://www.vmou.ac.in"
-                or full_url == url
-            ):
-              continue
-
-            if title not in seen_titles:
-              new_found.append({"title": title, "url": full_url})
-              seen_titles.add(title)
-
-        # 2. रिजल्ट और परीक्षा की टेबल्स को स्कैन करना (केवल तब जब उनके साथ डायरेक्ट लिंक हो)
+        # 1. रिजल्ट टेबल की हर एक पंक्ति (Row) को सीधे पकड़ना (जैसे B.Sc, MA, MBA आदि)
         for table in soup.find_all("table"):
           for tr in table.find_all("tr"):
             cols = [
                 " ".join(td.get_text(strip=True).split())
                 for td in tr.find_all(["td", "th"])
             ]
-            if len(cols) >= 2:
+            if len(cols) >= 3:  # अगर टेबल में सीरियल नंबर, कोर्स और डेट है
               row_text = " | ".join([c for c in cols if c])
-              link_tag = tr.find("a", href=True)
+              if len(row_text) > 10 and row_text not in seen_titles:
+                # सीधा रिजल्ट पेज का यूआरएल दें
+                item_url = (
+                    "https://online.vmou.ac.in/results.aspx"
+                    if "result" in url or "online" in url
+                    else url
+                )
+                new_found.append({"title": row_text, "url": item_url})
+                seen_titles.add(row_text)
 
-              # अगर टेबल रो के अंदर असली और सही लिंक है तभी पोस्ट करें
-              if (
-                  link_tag
-                  and link_tag.get("href")
-                  and not link_tag["href"].startswith("#")
-                  and not link_tag["href"].startswith("javascript:")
-              ):
-                item_url = urljoin(url, link_tag["href"])
-                if (
-                    item_url.rstrip("/") != "https://www.vmou.ac.in"
-                    and item_url != url
-                ):
-                  if len(row_text) > 10 and row_text not in seen_titles:
-                    new_found.append({"title": row_text, "url": item_url})
-                    seen_titles.add(row_text)
+        # 2. सामान्य लिंक्स और PDF
+        for a in soup.find_all("a", href=True):
+          title = " ".join(a.get_text(strip=True).split())
+          href = a["href"].strip()
+
+          if (
+              len(title) > 8
+              and not href.startswith("javascript:")
+              and not href.startswith("#")
+          ):
+            full_url = urljoin(url, href)
+            if title not in seen_titles:
+              new_found.append({"title": title, "url": full_url})
+              seen_titles.add(title)
 
     except Exception as e:
       print(f"Error scraping {url}: {e}")
 
   if new_found:
     updated_history = new_found + seen_items
-    save_history(updated_history[:400])
+    save_history(updated_history[:500])
 
     for item in reversed(new_found):
       send_telegram_alert(item["title"], item["url"])

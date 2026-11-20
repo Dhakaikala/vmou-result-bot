@@ -1,4 +1,6 @@
+from datetime import datetime, timedelta, timezone
 import hashlib
+import io
 import json
 import os
 import re
@@ -7,352 +9,342 @@ from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 import requests
 
-# Bot & Channel Config
 TELEGRAM_BOT_TOKEN = os.environ.get(
     "BOT_TOKEN", "9222243244:AAHdY4RDyRJuZwT5R9h2_XGUkOnRSZdYIwE"
 ).strip()
-CHANNEL_ID = os.environ.get("VMOU_CHANNEL_ID", "@VmouRajasthan").strip()
+CHANNEL_USERNAME = "@VmouRajasthan"
+PROMO_FOOTER = "✅ VMOU KOTA की अपडेट सबसे पहले Join : @VmouRajasthan"
 
-SEEN_FILE = "last_seen.json"
+STATE_FILE = "seen_vmou_notices.json"
+DOWNLOAD_DIR = "vmou_tmp_files"
 
-# VMOU Main + All 7 Regional Centres & Notices URLs
-TARGET_URLS = [
-    "https://www.vmou.ac.in/",
-    "https://www.vmou.ac.in/regional-centres",
-    "https://www.vmou.ac.in/rc-ajmer",
-    "https://www.vmou.ac.in/rc-udaipur",
-    "https://www.vmou.ac.in/rc-kota",
-    "https://www.vmou.ac.in/rc-jaipur",
-    "https://www.vmou.ac.in/rc-jodhpur",
-    "https://www.vmou.ac.in/rc-bikaner",
-    "https://www.vmou.ac.in/rc-bharatpur",
-    "https://www.vmou.ac.in/notices",
+# VMOU & Regional pages monitoring list (5 core VMOU/Regional endpoints)
+VMOU_SOURCES = [
+    {"name": "VMOU Main Home & Notices", "url": "https://www.vmou.ac.in/"},
+    {
+        "name": "VMOU Latest News & Announcements",
+        "url": "https://www.vmou.ac.in/news",
+    },
+    {
+        "name": "VMOU Examination & Admit Card Updates",
+        "url": "https://www.vmou.ac.in/examination",
+    },
+    {
+        "name": "VMOU Assignment & Practical Updates",
+        "url": "https://www.vmou.ac.in/assignments",
+    },
+    {
+        "name": "VMOU Regional Centres Directory & Notices",
+        "url": "https://www.vmou.ac.in/regional-centres",
+    },
 ]
 
-# Regional centre & notice keywords
-REGIONAL_CENTRE_KEYWORDS = [
-    "ajmer",
-    "udaipur",
-    "kota",
-    "jaipur",
-    "jodhpur",
-    "bikaner",
-    "bharatpur",
-    "regional",
-    "rcajm",
-    "rcudr",
-    "rcjpr",
-    "rcjdp",
-    "rcbkn",
-    "rcbpr",
-    "rckta",
-    "camp",
-    "practical",
-    "notice",
-    "notification",
-    "exam",
-    "defaulter",
-    "assignment",
-    "admit",
-    "result",
-]
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
+
+IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp")
+DOC_EXTS = (
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".zip",
+    ".rar",
+    ".txt",
+    ".csv",
+)
 
 
-def load_seen():
-  if os.path.exists(SEEN_FILE):
+def clean_text(val):
+  return " ".join(str(val or "").strip().split())
+
+
+def clean_url(url_str):
+  return str(url_str or "").strip().strip("()[]\"'").strip()
+
+
+def make_id(raw_str):
+  return hashlib.sha256(str(raw_str or "").encode("utf-8")).hexdigest()[:24]
+
+
+def get_ist_now_str():
+  ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+  return ist_now.strftime("%d-%m-%Y %I:%M %p IST")
+
+
+def load_state():
+  if os.path.exists(STATE_FILE):
     try:
-      with open(SEEN_FILE, "r", encoding="utf-8") as f:
+      with open(STATE_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
         if isinstance(data, dict):
-          return {
-              "urls": data.get("urls", []) if isinstance(data.get("urls"), list) else [],
-              "hashes": data.get("hashes", []) if isinstance(data.get("hashes"), list) else [],
-              "notices": data.get("notices", []) if isinstance(data.get("notices"), list) else [],
-          }
-    except Exception:
-      pass
-  return {"urls": [], "hashes": [], "notices": []}
+          seen_ids = (
+              data.get("seen_ids", [])
+              if isinstance(data.get("seen_ids"), list)
+              else []
+          )
+          seen_urls = (
+              data.get("seen_urls", [])
+              if isinstance(data.get("seen_urls"), list)
+              else []
+          )
+          return {"seen_ids": seen_ids, "seen_urls": seen_urls}
+    except Exception as e:
+      print(f"Error reading state file: {e}")
+  return {"seen_ids": [], "seen_urls": []}
 
 
-def save_seen(seen):
+def save_state(state):
   try:
     payload = {
-        "urls": seen.get("urls", [])[-8000:],
-        "hashes": seen.get("hashes", [])[-8000:],
-        "notices": seen.get("notices", [])[-3000:],
+        "updated_at": get_ist_now_str(),
+        "seen_ids": state.get("seen_ids", [])[-10000:],
+        "seen_urls": state.get("seen_urls", [])[-10000:],
     }
-    with open(SEEN_FILE, "w", encoding="utf-8") as f:
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
       json.dump(payload, f, ensure_ascii=False, indent=2)
   except Exception as e:
-    print(f"Error saving {SEEN_FILE}: {e}")
+    print(f"Error saving state file: {e}")
 
 
-def sha256_bytes(data_bytes):
-  return hashlib.sha256(data_bytes).hexdigest()
-
-
-def sha256_text(text):
-  cleaned = " ".join(re.sub(r"\s+", " ", str(text or "").strip().lower()).split())
-  return hashlib.sha256(cleaned.encode("utf-8")).hexdigest()
-
-
-def detect_rc_label(text):
-  low = str(text or "").lower()
-  mapping = {
-      "ajmer": "Ajmer RC",
-      "rcajm": "Ajmer RC",
-      "udaipur": "Udaipur RC",
-      "rcudr": "Udaipur RC",
-      "jaipur": "Jaipur RC",
-      "rcjpr": "Jaipur RC",
-      "jodhpur": "Jodhpur RC",
-      "rcjdp": "Jodhpur RC",
-      "bikaner": "Bikaner RC",
-      "rcbkn": "Bikaner RC",
-      "bharatpur": "Bharatpur RC",
-      "rcbpr": "Bharatpur RC",
-      "kota": "Kota RC",
-      "rckta": "Kota RC",
-  }
-  for key, label in mapping.items():
-    if key in low:
-      return label
-  return "VMOU Update"
-
-
-def is_relevant_link(url, text):
-  combined = f"{url} {text}".lower()
-  if any(ext in combined for ext in [".pdf", ".jpg", ".jpeg", ".png", ".webp"]):
-    return True
-  return any(kw in combined for kw in REGIONAL_CENTRE_KEYWORDS)
-
-
-def send_message(text):
-  if not CHANNEL_ID:
-    print("CHANNEL_ID is empty; skipping sendMessage.")
+def is_vmou_or_regional_link(url_str):
+  u = clean_url(url_str).lower()
+  if not u.startswith(("http://", "https://")):
     return False
-  api_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+  parsed = urlparse(u)
+  host = parsed.netloc
+  if not host:
+    return False
+  keywords = [
+      "vmou",
+      "notice",
+      "circular",
+      "order",
+      "exam",
+      "result",
+      "admit",
+      "assignment",
+      "practical",
+      "regional",
+      "jaipur",
+      "jodhpur",
+      "ajmer",
+      "udaipur",
+      "kota",
+      "bikaner",
+      "bharatpur",
+      "mercy",
+      "notification",
+      "timetable",
+      "schedule",
+      ".pdf",
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".doc",
+      ".docx",
+  ]
+  if "vmou.ac.in" in host:
+    return True
+  return any(k in u for k in keywords)
+
+
+def classify_file_type(url_str, content_type=""):
+  lower_u = clean_url(url_str).lower().split("?")[0]
+  ct = str(content_type or "").lower()
+  if lower_u.endswith(IMAGE_EXTS) or ct.startswith("image/"):
+    return "image"
+  if lower_u.endswith(DOC_EXTS) or "pdf" in ct or "octet-stream" in ct:
+    return "document"
+  return "link"
+
+
+def extract_items_from_page(source_name, page_url):
+  items = []
   try:
-    r = requests.post(
-        api_url,
+    resp = requests.get(clean_url(page_url), headers=HEADERS, timeout=25)
+    if resp.status_code != 200:
+      print(f"[{source_name}] HTTP {resp.status_code} for {page_url}")
+      return items
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    seen_local = set()
+
+    # 1. Links (PDFs, images, notices, regional centre pages/files)
+    for tag in soup.find_all(["a", "iframe", "embed"]):
+      href = tag.get("href") or tag.get("src") or ""
+      full_url = clean_url(urljoin(page_url, href))
+      if not full_url or full_url.startswith(("javascript:", "mailto:", "#")):
+        continue
+      if not is_vmou_or_regional_link(full_url):
+        continue
+      if full_url in seen_local:
+        continue
+      seen_local.add(full_url)
+
+      title = clean_text(tag.get_text(" ", strip=True))
+      if not title or len(title) < 3:
+        title = clean_text(
+            tag.get("title") or tag.get("aria-label") or ""
+        )
+      if not title or len(title) < 3:
+        path_part = urlparse(full_url).path.split("/")[-1]
+        title = clean_text(re.sub(r"[-_]+", " ", path_part)) or "VMOU Update"
+
+      items.append({
+          "source": source_name,
+          "title": title[:220],
+          "url": full_url,
+          "kind": classify_file_type(full_url),
+      })
+
+    # 2. Direct images on page (e.g., scanned notices / posters)
+    for img in soup.find_all("img"):
+      src = clean_url(urljoin(page_url, img.get("src") or ""))
+      if not src or src in seen_local:
+        continue
+      alt_text = clean_text(img.get("alt") or img.get("title") or "")
+      if "vmou.ac.in" in src.lower() or any(
+          w in (src + " " + alt_text).lower()
+          for w in ["notice", "exam", "mercy", "order", "circular", "regional"]
+      ):
+        seen_local.add(src)
+        items.append({
+            "source": source_name,
+            "title": (alt_text or "VMOU Notice Image")[:220],
+            "url": src,
+            "kind": "image",
+        })
+
+    print(f"[{source_name}] Found {len(items)} candidate items.")
+  except Exception as e:
+    print(f"[{source_name}] Error fetching page: {e}")
+  return items
+
+
+def build_caption(item):
+  title = clean_text(item.get("title", "VMOU Update"))
+  source = clean_text(item.get("source", "VMOU"))
+  url = clean_url(item.get("url", ""))
+  kind = item.get("kind", "link")
+
+  type_label = {
+      "image": "🖼️ Notice Image",
+      "document": "📄 Official Document / PDF",
+      "link": "🔗 Official Update Link",
+  }.get(kind, "📢 Official Update")
+
+  header = "📢 *VMOU KOTA — नया अपडेट*\n\n"
+  footer = f"\n\n{PROMO_FOOTER}"
+
+  body_lines = [
+      f"📌 *विषय:* {title}",
+      f"🏛️ *स्रोत:* {source}",
+      f"🗂️ *प्रकार:* {type_label}",
+  ]
+  if url:
+    body_lines.append(f"🔗 *लिंक:* {url}")
+
+  caption = header + "\n".join(body_lines) + footer
+  # Telegram media caption limit is 1024 characters
+  if len(caption) > 1024:
+    max_body_len = 1024 - len(header) - len(footer) - 10
+    trimmed_body = ("\n".join(body_lines))[: max(50, max_body_len)]
+    caption = header + trimmed_body + "..." + footer
+  return caption[:1024]
+
+
+def download_binary(url_str):
+  try:
+    r = requests.get(clean_url(url_str), headers=HEADERS, timeout=35)
+    if r.status_code == 200 and r.content:
+      ct = r.headers.get("Content-Type", "")
+      return r.content, ct
+  except Exception as e:
+    print(f"Download failed for {url_str}: {e}")
+  return None, ""
+
+
+def send_telegram_item(item):
+  if not TELEGRAM_BOT_TOKEN:
+    print("Missing BOT_TOKEN.")
+    return False
+
+  caption = build_caption(item)
+  url = clean_url(item.get("url", ""))
+  kind = item.get("kind", "link")
+
+  api_base = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+
+  if kind in ("image", "document") and url:
+    content, ct = download_binary(url)
+    real_kind = classify_file_type(url, ct)
+    if content:
+      parsed_name = urlparse(url).path.split("/")[-1] or (
+          "vmou_notice.jpg" if real_kind == "image" else "vmou_notice.pdf"
+      )
+      parsed_name = re.sub(r"[^A-Za-z0-9._-]", "_", parsed_name)[:80] or (
+          "vmou_notice"
+      )
+
+      if real_kind == "image":
+        endpoint = f"{api_base}/sendPhoto"
+        files = {"photo": (parsed_name, io.BytesIO(content))}
+        data = {
+            "chat_id": CHANNEL_USERNAME,
+            "caption": caption,
+            "parse_mode": "Markdown",
+        }
+      else:
+        if "." not in parsed_name:
+          parsed_name += ".pdf"
+        endpoint = f"{api_base}/sendDocument"
+        files = {"document": (parsed_name, io.BytesIO(content))}
+        data = {
+            "chat_id": CHANNEL_USERNAME,
+            "caption": caption,
+            "parse_mode": "Markdown",
+        }
+
+      try:
+        res = requests.post(endpoint, data=data, files=files, timeout=45)
+        if res.status_code == 200:
+          return True
+        print(f"Media send failed ({endpoint}): {res.text[:220]}")
+      except Exception as e:
+        print(f"Media post error: {e}")
+
+  # Fallback to text message with link and required footer
+  msg_text = caption
+  if len(msg_text) > 4096:
+    msg_text = msg_text[: 4096 - len(PROMO_FOOTER) - 4] + "...\n\n" + PROMO_FOOTER
+
+  try:
+    res = requests.post(
+        f"{api_base}/sendMessage",
         data={
-            "chat_id": CHANNEL_ID,
-            "text": text[:4000],
+            "chat_id": CHANNEL_USERNAME,
+            "text": msg_text,
+            "parse_mode": "Markdown",
             "disable_web_page_preview": False,
         },
         timeout=25,
     )
-    if r.status_code == 429:
-      retry_after = int(r.json().get("parameters", {}).get("retry_after", 5))
-      time.sleep(retry_after + 1)
-      r = requests.post(
-          api_url,
-          data={
-              "chat_id": CHANNEL_ID,
-              "text": text[:4000],
-              "disable_web_page_preview": False,
-          },
-          timeout=25,
-      )
-    if r.status_code != 200:
-      print(f"sendMessage failed: {r.text}")
-      return False
-    return True
+    if res.status_code == 200:
+      return True
+    print(f"sendMessage failed: {res.text[:220]}")
+    return False
   except Exception as e:
     print(f"sendMessage error: {e}")
     return False
-
-
-def send_document(file_bytes, filename, caption=""):
-  if not CHANNEL_ID:
-    print("CHANNEL_ID is empty; skipping sendDocument.")
-    return False
-  api_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument"
-  try:
-    r = requests.post(
-        api_url,
-        data={"chat_id": CHANNEL_ID, "caption": caption[:1000]},
-        files={"document": (filename, file_bytes)},
-        timeout=45,
-    )
-    if r.status_code == 429:
-      retry_after = int(r.json().get("parameters", {}).get("retry_after", 5))
-      time.sleep(retry_after + 1)
-      r = requests.post(
-          api_url,
-          data={"chat_id": CHANNEL_ID, "caption": caption[:1000]},
-          files={"document": (filename, file_bytes)},
-          timeout=45,
-      )
-    if r.status_code != 200:
-      print(f"sendDocument failed ({filename}): {r.text}")
-      return False
-    return True
-  except Exception as e:
-    print(f"sendDocument error ({filename}): {e}")
-    return False
-
-
-def send_photo(img_bytes, filename, caption=""):
-  if not CHANNEL_ID:
-    print("CHANNEL_ID is empty; skipping sendPhoto.")
-    return False
-  api_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-  try:
-    r = requests.post(
-        api_url,
-        data={"chat_id": CHANNEL_ID, "caption": caption[:1000]},
-        files={"photo": (filename, img_bytes)},
-        timeout=45,
-    )
-    if r.status_code == 429:
-      retry_after = int(r.json().get("parameters", {}).get("retry_after", 5))
-      time.sleep(retry_after + 1)
-      r = requests.post(
-          api_url,
-          data={"chat_id": CHANNEL_ID, "caption": caption[:1000]},
-          files={"photo": (filename, img_bytes)},
-          timeout=45,
-      )
-    if r.status_code != 200:
-      print(f"sendPhoto failed ({filename}): {r.text}")
-      return False
-    return True
-  except Exception as e:
-    print(f"sendPhoto error ({filename}): {e}")
-    return False
-
-
-def process_url_item(full_url, title, headers, seen_urls, seen_hashes, seen_notices):
-  if full_url in seen_urls:
-    return False
-
-  lower_url = full_url.lower()
-  rc_tag = detect_rc_label(f"{title} {full_url}")
-
-  # 1. PDF file
-  if lower_url.endswith(".pdf") or ".pdf?" in lower_url:
-    try:
-      resp = requests.get(full_url, headers=headers, timeout=40)
-      if resp.status_code == 200 and resp.content:
-        h = sha256_bytes(resp.content)
-        if h not in seen_hashes:
-          fname = os.path.basename(urlparse(full_url).path) or "vmou_notice.pdf"
-          if not fname.lower().endswith(".pdf"):
-            fname += ".pdf"
-          caption = f"[{rc_tag}] {title or 'PDF Notice'}\nJoin @VmouRajasthan".strip()
-          if send_document(resp.content, fname, caption):
-            seen_urls.add(full_url)
-            seen_hashes.add(h)
-            print(f"Sent PDF: {fname} ({rc_tag})")
-            time.sleep(1.2)
-            return True
-    except Exception as e:
-      print(f"PDF fetch error ({full_url}): {e}")
-    return False
-
-  # 2. Image file
-  if any(lower_url.endswith(ext) or f"{ext}?" in lower_url for ext in [".jpg", ".jpeg", ".png", ".webp"]):
-    try:
-      resp = requests.get(full_url, headers=headers, timeout=35)
-      if resp.status_code == 200 and resp.content and len(resp.content) > 6000:
-        h = sha256_bytes(resp.content)
-        if h not in seen_hashes:
-          fname = os.path.basename(urlparse(full_url).path) or "vmou_image.jpg"
-          caption = f"[{rc_tag}] {title or 'Notice Image'}\nJoin @VmouRajasthan".strip()
-          if send_photo(resp.content, fname, caption):
-            seen_urls.add(full_url)
-            seen_hashes.add(h)
-            print(f"Sent Image: {fname} ({rc_tag})")
-            time.sleep(1.2)
-            return True
-    except Exception as e:
-      print(f"Image fetch error ({full_url}): {e}")
-    return False
-
-  # 3. Sub-page / Notice link
-  if title and is_relevant_link(full_url, title):
-    n_hash = sha256_text(f"{title}|{full_url}")
-    if n_hash not in seen_notices:
-      msg = f"[{rc_tag}] {title}\n{full_url}\n\nJoin @VmouRajasthan"
-      if send_message(msg):
-        seen_urls.add(full_url)
-        seen_notices.add(n_hash)
-        print(f"Sent Notice: {title} ({rc_tag})")
-        time.sleep(1.2)
-        return True
-
-  return False
-
-
-def scrape_page(page_url, headers, seen_urls, seen_hashes, seen_notices, depth=0):
-  try:
-    resp = requests.get(page_url, headers=headers, timeout=30)
-    if resp.status_code != 200:
-      print(f"Skipped {page_url}: HTTP {resp.status_code}")
-      return
-  except Exception as e:
-    print(f"Request error on {page_url}: {e}")
-    return
-
-  soup = BeautifulSoup(resp.text, "html.parser")
-  sub_pages_to_visit = []
-
-  # Sabhi <a> links check karein
-  for a in soup.find_all("a", href=True):
-    href = a["href"].strip()
-    if not href or href.startswith(("javascript:", "mailto:", "tel:", "#")):
-      continue
-    full_url = urljoin(page_url, href)
-    link_text = " ".join(a.get_text(" ", strip=True).split())
-
-    sent = process_url_item(
-        full_url=full_url,
-        title=link_text,
-        headers=headers,
-        seen_urls=seen_urls,
-        seen_hashes=seen_hashes,
-        seen_notices=seen_notices,
-    )
-
-    if (
-        not sent
-        and depth == 0
-        and is_relevant_link(full_url, link_text)
-        and full_url not in sub_pages_to_visit
-        and "vmou.ac.in" in full_url.lower()
-        and not any(full_url.lower().endswith(ext) for ext in [".pdf", ".jpg", ".jpeg", ".png", ".webp", ".zip"])
-    ):
-      sub_pages_to_visit.append(full_url)
-
-  # Sabhi <img> tags check karein
-  for img in soup.find_all("img", src=True):
-    src = img["src"].strip()
-    if not src or src.startswith("data:"):
-      continue
-    img_url = urljoin(page_url, src)
-    alt_text = " ".join((img.get("alt") or img.get("title") or "").split())
-    process_url_item(
-        full_url=img_url,
-        title=alt_text,
-        headers=headers,
-        seen_urls=seen_urls,
-        seen_hashes=seen_hashes,
-        seen_notices=seen_notices,
-    )
-
-  # Regional centre ke sub-pages ke andar bhi jaakar PDF/Image/Notices pakdein
-  if depth == 0:
-    for sub_url in sub_pages_to_visit[:20]:
-      scrape_page(
-          page_url=sub_url,
-          headers=headers,
-          seen_urls=seen_urls,
-          seen_hashes=seen_hashes,
-          seen_notices=seen_notices,
-          depth=1,
-      )
-      time.sleep(0.5)
 
 
 def main():
@@ -360,33 +352,45 @@ def main():
     print("BOT_TOKEN missing.")
     return
 
-  seen = load_seen()
-  seen_urls = set(seen.get("urls", []))
-  seen_hashes = set(seen.get("hashes", []))
-  seen_notices = set(seen.get("notices", []))
+  state = load_state()
+  seen_ids = set(state.get("seen_ids", []))
+  seen_urls = set(state.get("seen_urls", []))
 
-  headers = {
-      "User-Agent": (
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-          "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-      )
-  }
+  collected = []
+  for src in VMOU_SOURCES:
+    collected.extend(extract_items_from_page(src["name"], src["url"]))
+    time.sleep(0.8)
 
-  for url in TARGET_URLS:
-    scrape_page(
-        page_url=url,
-        headers=headers,
-        seen_urls=seen_urls,
-        seen_hashes=seen_hashes,
-        seen_notices=seen_notices,
-        depth=0,
-    )
+  new_items = []
+  for it in collected:
+    u = clean_url(it.get("url", ""))
+    t = clean_text(it.get("title", ""))
+    item_id = make_id(f"{u}|{t}")
+    if item_id not in seen_ids and (not u or u not in seen_urls):
+      it["id"] = item_id
+      new_items.append(it)
 
-  seen["urls"] = list(seen_urls)
-  seen["hashes"] = list(seen_hashes)
-  seen["notices"] = list(seen_notices)
-  save_seen(seen)
-  print("VMOU scraper run completed for @VmouRajasthan.")
+  print(f"Total new VMOU/Regional items detected: {len(new_items)}")
+  if not new_items:
+    return
+
+  posted = 0
+  for it in new_items:
+    if send_telegram_item(it):
+      seen_ids.add(it["id"])
+      if it.get("url"):
+        seen_urls.add(clean_url(it["url"]))
+      posted += 1
+      print(f"Posted ({posted}/{len(new_items)}): {it.get('title')[:70]}")
+    time.sleep(1.5)
+
+  if posted > 0:
+    state["seen_ids"] = list(seen_ids)
+    state["seen_urls"] = list(seen_urls)
+    save_state(state)
+    print(f"Done! Sent {posted} VMOU updates to {CHANNEL_USERNAME}.")
+  else:
+    print("No updates were posted. Check bot admin rights in @VmouRajasthan.")
 
 
 if __name__ == "__main__":

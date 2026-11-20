@@ -15,8 +15,7 @@ TELEGRAM_BOT_TOKEN = os.environ.get(
 CHANNEL_USERNAME = "@VmouRajasthan"
 PROMO_FOOTER = "✅ VMOU KOTA की अपडेट सबसे पहले Join : @VmouRajasthan"
 
-STATE_FILE = "seen_vmou_notices.json"
-DOWNLOAD_DIR = "vmou_tmp_files"
+STATE_FILE = "last_seen.json"
 
 # VMOU & Regional pages monitoring list (5 core VMOU/Regional endpoints)
 VMOU_SOURCES = [
@@ -97,8 +96,10 @@ def load_state():
               else []
           )
           return {"seen_ids": seen_ids, "seen_urls": seen_urls}
+        if isinstance(data, list):
+          return {"seen_ids": [], "seen_urls": [clean_url(x) for x in data]}
     except Exception as e:
-      print(f"Error reading state file: {e}")
+      print(f"Error reading {STATE_FILE}: {e}")
   return {"seen_ids": [], "seen_urls": []}
 
 
@@ -112,7 +113,7 @@ def save_state(state):
     with open(STATE_FILE, "w", encoding="utf-8") as f:
       json.dump(payload, f, ensure_ascii=False, indent=2)
   except Exception as e:
-    print(f"Error saving state file: {e}")
+    print(f"Error saving {STATE_FILE}: {e}")
 
 
 def is_vmou_or_regional_link(url_str):
@@ -120,8 +121,7 @@ def is_vmou_or_regional_link(url_str):
   if not u.startswith(("http://", "https://")):
     return False
   parsed = urlparse(u)
-  host = parsed.netloc
-  if not host:
+  if not parsed.netloc:
     return False
   keywords = [
       "vmou",
@@ -152,7 +152,7 @@ def is_vmou_or_regional_link(url_str):
       ".doc",
       ".docx",
   ]
-  if "vmou.ac.in" in host:
+  if "vmou.ac.in" in parsed.netloc:
     return True
   return any(k in u for k in keywords)
 
@@ -178,7 +178,6 @@ def extract_items_from_page(source_name, page_url):
     soup = BeautifulSoup(resp.text, "html.parser")
     seen_local = set()
 
-    # 1. Links (PDFs, images, notices, regional centre pages/files)
     for tag in soup.find_all(["a", "iframe", "embed"]):
       href = tag.get("href") or tag.get("src") or ""
       full_url = clean_url(urljoin(page_url, href))
@@ -192,9 +191,7 @@ def extract_items_from_page(source_name, page_url):
 
       title = clean_text(tag.get_text(" ", strip=True))
       if not title or len(title) < 3:
-        title = clean_text(
-            tag.get("title") or tag.get("aria-label") or ""
-        )
+        title = clean_text(tag.get("title") or tag.get("aria-label") or "")
       if not title or len(title) < 3:
         path_part = urlparse(full_url).path.split("/")[-1]
         title = clean_text(re.sub(r"[-_]+", " ", path_part)) or "VMOU Update"
@@ -206,7 +203,6 @@ def extract_items_from_page(source_name, page_url):
           "kind": classify_file_type(full_url),
       })
 
-    # 2. Direct images on page (e.g., scanned notices / posters)
     for img in soup.find_all("img"):
       src = clean_url(urljoin(page_url, img.get("src") or ""))
       if not src or src in seen_local:
@@ -254,7 +250,6 @@ def build_caption(item):
     body_lines.append(f"🔗 *लिंक:* {url}")
 
   caption = header + "\n".join(body_lines) + footer
-  # Telegram media caption limit is 1024 characters
   if len(caption) > 1024:
     max_body_len = 1024 - len(header) - len(footer) - 10
     trimmed_body = ("\n".join(body_lines))[: max(50, max_body_len)]
@@ -281,7 +276,6 @@ def send_telegram_item(item):
   caption = build_caption(item)
   url = clean_url(item.get("url", ""))
   kind = item.get("kind", "link")
-
   api_base = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
   if kind in ("image", "document") and url:
@@ -291,8 +285,8 @@ def send_telegram_item(item):
       parsed_name = urlparse(url).path.split("/")[-1] or (
           "vmou_notice.jpg" if real_kind == "image" else "vmou_notice.pdf"
       )
-      parsed_name = re.sub(r"[^A-Za-z0-9._-]", "_", parsed_name)[:80] or (
-          "vmou_notice"
+      parsed_name = (
+          re.sub(r"[^A-Za-z0-9._-]", "_", parsed_name)[:80] or "vmou_notice"
       )
 
       if real_kind == "image":
@@ -322,7 +316,6 @@ def send_telegram_item(item):
       except Exception as e:
         print(f"Media post error: {e}")
 
-  # Fallback to text message with link and required footer
   msg_text = caption
   if len(msg_text) > 4096:
     msg_text = msg_text[: 4096 - len(PROMO_FOOTER) - 4] + "...\n\n" + PROMO_FOOTER
@@ -395,3 +388,4 @@ def main():
 
 if __name__ == "__main__":
   main()
+    

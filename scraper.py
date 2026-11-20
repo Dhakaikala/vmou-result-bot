@@ -1,154 +1,146 @@
-import html
+import hashlib
 import json
 import os
-from urllib.parse import urljoin
-import requests
+from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
-import urllib3
+import requests
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+TELEGRAM_BOT_TOKEN = os.environ.get("BOT_TOKEN", "").strip()
+CHANNEL_ID = os.environ.get("VMOU_CHANNEL_ID", "").strip()  # e.g. "@YourChannel" ya "-100..."
+SEEN_FILE = "vmou_seen_updates.json"
 
-# आपका टेलीग्राम बॉट टोकन और चैनल
-TELEGRAM_BOT_TOKEN = "9099367147:AAEIZMehH4Sw45u2Vj3XfvyL693Rn73C6l8"
-CHANNEL_USERNAME = "@VmouRajasthan"
-
-TARGET_URLS = [
+TARGET_PAGES = [
     "https://www.vmou.ac.in/",
-    "https://online.vmou.ac.in/results.aspx",
-    "https://result.vmou.ac.in/",
-    "https://rkcl.vmou.ac.in/",
-    "https://admissions.vmou.ac.in/",
-    "https://exam.vmou.ac.in/",
+    # Yahan regional centres ya notices ke URLs add karein
 ]
 
-HISTORY_FILE = "last_seen.json"
 
-
-def load_history():
-  if os.path.exists(HISTORY_FILE):
+def load_seen():
+  if os.path.exists(SEEN_FILE):
     try:
-      with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+      with open(SEEN_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
-        if isinstance(data, list):
-          return [
-              item
-              for item in data
-              if isinstance(item, dict) and "title" in item
-          ]
+        if isinstance(data, dict):
+          return data
     except Exception:
       pass
-  return []
+  return {"urls": [], "hashes": []}
 
 
-def save_history(history_list):
+def save_seen(seen):
   try:
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-      json.dump(history_list, f, ensure_ascii=False, indent=4)
-  except Exception as e:
-    print(f"Error saving history: {e}")
-
-
-def send_telegram_alert(title, link):
-  try:
-    api_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/"
-    safe_title = html.escape(title)
-    safe_link = html.escape(link)
-
-    message = (
-        f"🚨 <b>VMOU KOTA NEW UPDATE / RESULT!</b> 🎓\n\n"
-        f"📌 <b>{safe_title}</b>\n\n"
-        f"🔗 <b>डायरेक्ट लिंक / चेक करें:</b>\n{safe_link}\n\n"
-        "──────────────────────────\n"
-        f"✅ <b>VMOU KOTA की अपडेट सबसे पहले Join : {CHANNEL_USERNAME}</b>"
-    )
-
-    if ".pdf" in link.lower() or "pdf" in link.lower():
-      payload = {
-          "chat_id": CHANNEL_USERNAME,
-          "document": link,
-          "caption": message,
-          "parse_mode": "HTML",
-      }
-      res = requests.post(api_url + "sendDocument", data=payload, timeout=15)
-    else:
-      payload = {
-          "chat_id": CHANNEL_USERNAME,
-          "text": message,
-          "parse_mode": "HTML",
-          "disable_web_page_preview": False,
-      }
-      res = requests.post(api_url + "sendMessage", data=payload, timeout=15)
-
-    if res.status_code != 200:
-      print(f"Telegram API Error: {res.text}")
-  except Exception as e:
-    print(f"Telegram send error: {e}")
-
-
-def scrape_vmou():
-  seen_items = load_history()
-  seen_titles = {
-      item.get("title") for item in seen_items if isinstance(item, dict)
-  }
-
-  headers = {
-      "User-Agent": (
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,"
-          " like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    with open(SEEN_FILE, "w", encoding="utf-8") as f:
+      json.dump(
+          {
+              "urls": seen.get("urls", [])[-5000:],
+              "hashes": seen.get("hashes", [])[-5000:],
+          },
+          f,
+          ensure_ascii=False,
+          indent=2,
       )
-  }
+  except Exception as e:
+    print(f"Error saving vmou history: {e}")
 
-  new_found = []
 
-  for url in TARGET_URLS:
+def file_sha256(content_bytes):
+  return hashlib.sha256(content_bytes).hexdigest()
+
+
+def send_text(text):
+  url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+  r = requests.post(
+      url,
+      data={"chat_id": CHANNEL_ID, "text": text[:4000], "disable_web_page_preview": False},
+      timeout=25,
+  )
+  return r.status_code == 200
+
+
+def send_document_bytes(file_bytes, filename, caption=""):
+  url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument"
+  files = {"document": (filename, file_bytes)}
+  data = {"chat_id": CHANNEL_ID, "caption": caption[:1000]}
+  r = requests.post(url, data=data, files=files, timeout=40)
+  if r.status_code != 200:
+    print(f"sendDocument failed ({filename}): {r.text}")
+    return False
+  return True
+
+
+def send_photo_bytes(img_bytes, filename, caption=""):
+  url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+  files = {"photo": (filename, img_bytes)}
+  data = {"chat_id": CHANNEL_ID, "caption": caption[:1000]}
+  r = requests.post(url, data=data, files=files, timeout=40)
+  if r.status_code != 200:
+    print(f"sendPhoto failed ({filename}): {r.text}")
+    return False
+  return True
+
+
+def check_and_post_updates(pages=None):
+  if not TELEGRAM_BOT_TOKEN or not CHANNEL_ID:
+    print("Missing BOT_TOKEN or VMOU_CHANNEL_ID.")
+    return
+
+  seen = load_seen()
+  seen_urls = set(seen.get("urls", []))
+  seen_hashes = set(seen.get("hashes", []))
+  headers = {"User-Agent": "Mozilla/5.0"}
+
+  for page_url in (pages or TARGET_PAGES):
     try:
-      response = requests.get(url, headers=headers, timeout=25, verify=False)
-      if response.status_code == 200:
-        soup = BeautifulSoup(response.text, "html.parser")
+      resp = requests.get(page_url, headers=headers, timeout=25)
+      if resp.status_code != 200:
+        print(f"Page fetch failed {page_url}: {resp.status_code}")
+        continue
 
-        # 1. साइट की हर एक टेबल की रो (Row) को बिना किसी शर्त के सीधा उठाना (जैसे रिजल्ट्स)
-        for table in soup.find_all("table"):
-          for tr in table.find_all("tr"):
-            cols = [
-                " ".join(td.get_text(strip=True).split())
-                for td in tr.find_all(["td", "th"])
-            ]
-            if len(cols) >= 2:
-              row_text = " | ".join([c for c in cols if c])
-              if len(row_text) > 6 and row_text not in seen_titles:
-                a_tag = tr.find("a", href=True)
-                item_url = (
-                    urljoin(url, a_tag["href"]) if (a_tag and a_tag.get("href")) else url
-                )
-                new_found.append({"title": row_text, "url": item_url})
-                seen_titles.add(row_text)
+      soup = BeautifulSoup(resp.text, "html.parser")
 
-        # 2. साइट के हर एक टेक्स्ट, लिंक, लिस्ट या नोटिस को बिना रोके उठाना
-        for tag in soup.find_all(
-            ["a", "marquee", "li", "p", "span", "h1", "h2", "h3", "h4", "div"]
-        ):
-          title = " ".join(tag.get_text(strip=True).split())
-          href = tag.get("href", "").strip() if tag.name == "a" else ""
+      # 1. Sabhi links (PDF aur sub-pages) check karein
+      for a_tag in soup.find_all("a", href=True):
+        full_url = urljoin(page_url, a_tag["href"].strip())
+        link_text = " ".join(a_tag.get_text(" ", strip=True).split())
+        lower_url = full_url.lower()
 
-          if len(title) > 8 and not title.lower().startswith("http"):
-            item_url = urljoin(url, href) if href else url
-            if title not in seen_titles:
-              new_found.append({"title": title, "url": item_url})
-              seen_titles.add(title)
+        if lower_url.endswith(".pdf"):
+          if full_url in seen_urls:
+            continue
+          f_resp = requests.get(full_url, headers=headers, timeout=35)
+          if f_resp.status_code == 200 and f_resp.content:
+            h = file_sha256(f_resp.content)
+            if h not in seen_hashes:
+              fname = os.path.basename(urlparse(full_url).path) or "vmou_notice.pdf"
+              caption = f"VMOU Update (PDF)\n{link_text}\n{full_url}".strip()
+              if send_document_bytes(f_resp.content, fname, caption):
+                seen_urls.add(full_url)
+                seen_hashes.add(h)
+
+      # 2. Sabhi images check karein
+      for img_tag in soup.find_all("img", src=True):
+        img_url = urljoin(page_url, img_tag["src"].strip())
+        alt_text = " ".join((img_tag.get("alt") or "").split())
+        if img_url in seen_urls:
+          continue
+        if any(img_url.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"]):
+          i_resp = requests.get(img_url, headers=headers, timeout=30)
+          if i_resp.status_code == 200 and i_resp.content and len(i_resp.content) > 5000:
+            h = file_sha256(i_resp.content)
+            if h not in seen_hashes:
+              fname = os.path.basename(urlparse(img_url).path) or "vmou_update.jpg"
+              caption = f"VMOU Update\n{alt_text}\n{img_url}".strip()
+              if send_photo_bytes(i_resp.content, fname, caption):
+                seen_urls.add(img_url)
+                seen_hashes.add(h)
 
     except Exception as e:
-      print(f"Error scraping {url}: {e}")
+      print(f"Error checking {page_url}: {e}")
 
-  if new_found:
-    updated_history = new_found + seen_items
-    save_history(updated_history[:800])
-
-    for item in reversed(new_found):
-      send_telegram_alert(item["title"], item["url"])
-      print(f"Posted: {item['title']}")
-  else:
-    print("No new updates found.")
+  seen["urls"] = list(seen_urls)
+  seen["hashes"] = list(seen_hashes)
+  save_seen(seen)
 
 
 if __name__ == "__main__":
-  scrape_vmou()
+  check_and_post_updates()

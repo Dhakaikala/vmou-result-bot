@@ -29,7 +29,7 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
-          python scraper.py
+          python scraper.py --seed-only
 
       - name: Save Seen VMOU Notices State
         uses: stefanzweifel/git-auto-commit-action@v5

@@ -87,11 +87,6 @@ def clean_url(url_str):
   return str(url_str or "").strip().strip("()[]\"'").strip()
 
 
-def escape_md(val):
-  # Avoid breaking Telegram Markdown v1 (*, _, `) in dynamic titles/URLs
-  return re.sub(r"[*_`]", "", clean_text(val))
-
-
 def make_id(raw_str):
   return hashlib.sha256(str(raw_str or "").encode("utf-8")).hexdigest()[:24]
 
@@ -205,7 +200,6 @@ def extract_items_from_page(source_name, page_url):
     soup = BeautifulSoup(resp.text, "html.parser")
     seen_local = set()
 
-    # 1. Links, PDFs, images, iframes, embeds
     for tag in soup.find_all(["a", "iframe", "embed"]):
       href = tag.get("href") or tag.get("src") or ""
       full_url = clean_url(urljoin(page_url, href))
@@ -233,12 +227,14 @@ def extract_items_from_page(source_name, page_url):
           "kind": classify_file_type(full_url),
       })
 
-    # 2. All non-UI images (notices, circulars, posters, scans)
     for img in soup.find_all("img"):
       src = clean_url(
           urljoin(
               page_url,
-              img.get("src") or img.get("data-src") or img.get("data-lazy-src") or "",
+              img.get("src")
+              or img.get("data-src")
+              or img.get("data-lazy-src")
+              or "",
           )
       )
       if not src or src in seen_local:
@@ -264,7 +260,11 @@ def extract_items_from_page(source_name, page_url):
       ):
         seen_local.add(src)
         path_name = clean_text(
-            re.sub(r"[-_]+", " ", urlparse(src).path.split("/")[-1].rsplit(".", 1)[0])
+            re.sub(
+                r"[-_]+",
+                " ",
+                urlparse(src).path.split("/")[-1].rsplit(".", 1)[0],
+            )
         )
         final_title = alt_text or path_name or "VMOU Notice Image"
         items.append({
@@ -281,28 +281,26 @@ def extract_items_from_page(source_name, page_url):
 
 
 def build_caption(item):
-  title = escape_md(item.get("title", "VMOU Update"))[:180]
-  source = escape_md(item.get("source", "VMOU"))[:75]
+  title = clean_text(item.get("title", "VMOU Update"))[:180]
+  source = clean_text(item.get("source", "VMOU"))[:75]
   url = clean_url(item.get("url", ""))
   kind = item.get("kind", "link")
 
   badge = {
-      "image": "🔥 *NEW IMAGE NOTICE*",
-      "document": "🔥 *NEW PDF / DOC*",
-      "link": "🔥 *NEW UPDATE*",
-  }.get(kind, "🔥 *VMOU UPDATE*")
+      "image": "🖼️ NEW IMAGE NOTICE",
+      "document": "📄 NEW PDF / DOC",
+      "link": "🔗 NEW UPDATE",
+  }.get(kind, "📢 VMOU UPDATE")
 
-  header = f"📢 *VMOU KOTA ALERT* | {badge}\n\n"
+  header = f"📢 VMOU KOTA ALERT • {badge}\n\n"
   footer = f"\n\n{PROMO_FOOTER}"
 
   body_lines = [
-      f"📌 *{title}*",
-      f"🏛️ *{source}*",
+      f"📌 {title}",
+      f"🏛️ {source}",
   ]
-  if url and kind == "link":
+  if url:
     body_lines.append(f"🔗 {url}")
-  elif url:
-    body_lines.append(f"📎 {url}")
 
   caption = header + "\n".join(body_lines) + footer
   if len(caption) > 1024:
@@ -350,7 +348,6 @@ def send_telegram_item(item):
         data = {
             "chat_id": CHANNEL_USERNAME,
             "caption": caption,
-            "parse_mode": "Markdown",
         }
       else:
         if "." not in parsed_name:
@@ -360,7 +357,6 @@ def send_telegram_item(item):
         data = {
             "chat_id": CHANNEL_USERNAME,
             "caption": caption,
-            "parse_mode": "Markdown",
         }
 
       try:
@@ -381,7 +377,6 @@ def send_telegram_item(item):
         data={
             "chat_id": CHANNEL_USERNAME,
             "text": msg_text,
-            "parse_mode": "Markdown",
             "disable_web_page_preview": False,
         },
         timeout=25,
@@ -443,3 +438,4 @@ def main():
 
 if __name__ == "__main__":
   main()
+                

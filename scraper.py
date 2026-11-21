@@ -4,6 +4,7 @@ import io
 import json
 import os
 import re
+import sys
 import time
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
@@ -77,6 +78,25 @@ SKIP_IMG_KEYWORDS = (
     "loading",
     "spacer",
 )
+
+_BOLD_UPPER = "𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭"
+_BOLD_LOWER = "𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇"
+_BOLD_DIGIT = "𝟬𝟭𝟮𝟯𝟰𝟱𝟲𝟳𝟴𝟵"
+
+
+def to_bold(text_str):
+  """Convert ASCII letters and digits into clean Unicode bold characters."""
+  out = []
+  for ch in str(text_str or ""):
+    if "A" <= ch <= "Z":
+      out.append(_BOLD_UPPER[ord(ch) - ord("A")])
+    elif "a" <= ch <= "z":
+      out.append(_BOLD_LOWER[ord(ch) - ord("a")])
+    elif "0" <= ch <= "9":
+      out.append(_BOLD_DIGIT[ord(ch) - ord("0")])
+    else:
+      out.append(ch)
+  return "".join(out)
 
 
 def clean_text(val):
@@ -281,23 +301,23 @@ def extract_items_from_page(source_name, page_url):
 
 
 def build_caption(item):
-  title = clean_text(item.get("title", "VMOU Update"))[:180]
-  source = clean_text(item.get("source", "VMOU"))[:75]
+  title = clean_text(item.get("title", "VMOU Update"))[:150]
+  source = clean_text(item.get("source", "VMOU"))[:65]
   url = clean_url(item.get("url", ""))
   kind = item.get("kind", "link")
 
   badge = {
-      "image": "🖼️ NEW IMAGE NOTICE",
-      "document": "📄 NEW PDF / DOC",
-      "link": "🔗 NEW UPDATE",
-  }.get(kind, "📢 VMOU UPDATE")
+      "image": to_bold("IMAGE NOTICE"),
+      "document": to_bold("PDF / DOC"),
+      "link": to_bold("NEW UPDATE"),
+  }.get(kind, to_bold("VMOU UPDATE"))
 
-  header = f"📢 VMOU KOTA ALERT • {badge}\n\n"
+  header = f"📢 {to_bold('VMOU KOTA ALERT')} • {badge}\n\n"
   footer = f"\n\n{PROMO_FOOTER}"
 
   body_lines = [
-      f"📌 {title}",
-      f"🏛️ {source}",
+      f"📌 {to_bold(title)}",
+      f"🏛️ {to_bold(source)}",
   ]
   if url:
     body_lines.append(f"🔗 {url}")
@@ -391,7 +411,8 @@ def send_telegram_item(item):
 
 
 def main():
-  if not TELEGRAM_BOT_TOKEN:
+  seed_only = "--seed-only" in sys.argv
+  if not TELEGRAM_BOT_TOKEN and not seed_only:
     print("BOT_TOKEN missing.")
     return
 
@@ -403,6 +424,26 @@ def main():
   for src in VMOU_SOURCES:
     collected.extend(extract_items_from_page(src["name"], src["url"]))
     time.sleep(0.8)
+
+  if seed_only:
+    seeded = 0
+    for it in collected:
+      u = clean_url(it.get("url", ""))
+      t = clean_text(it.get("title", ""))
+      item_id = make_id(f"{u}|{t}")
+      if item_id not in seen_ids:
+        seen_ids.add(item_id)
+        seeded += 1
+      if u and u not in seen_urls:
+        seen_urls.add(u)
+    state["seen_ids"] = list(seen_ids)
+    state["seen_urls"] = list(seen_urls)
+    save_state(state)
+    print(
+        f"Seeded {seeded} existing items into {STATE_FILE} without posting to"
+        " Telegram."
+    )
+    return
 
   new_items = []
   for it in collected:
@@ -438,4 +479,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-                

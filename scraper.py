@@ -60,6 +60,23 @@ DOC_EXTS = (
     ".txt",
     ".csv",
 )
+SKIP_IMG_KEYWORDS = (
+    "logo",
+    "icon",
+    "favicon",
+    "arrow",
+    "bullet",
+    "social",
+    "facebook",
+    "twitter",
+    "instagram",
+    "youtube",
+    "whatsapp",
+    "naac",
+    "spinner",
+    "loading",
+    "spacer",
+)
 
 
 def clean_text(val):
@@ -68,6 +85,11 @@ def clean_text(val):
 
 def clean_url(url_str):
   return str(url_str or "").strip().strip("()[]\"'").strip()
+
+
+def escape_md(val):
+  # Avoid breaking Telegram Markdown v1 (*, _, `) in dynamic titles/URLs
+  return re.sub(r"[*_`]", "", clean_text(val))
 
 
 def make_id(raw_str):
@@ -167,6 +189,11 @@ def classify_file_type(url_str, content_type=""):
   return "link"
 
 
+def is_likely_ui_asset(url_str, alt_text=""):
+  combined = f"{clean_url(url_str).lower()} {clean_text(alt_text).lower()}"
+  return any(bad in combined for bad in SKIP_IMG_KEYWORDS)
+
+
 def extract_items_from_page(source_name, page_url):
   items = []
   try:
@@ -178,6 +205,7 @@ def extract_items_from_page(source_name, page_url):
     soup = BeautifulSoup(resp.text, "html.parser")
     seen_local = set()
 
+    # 1. Links, PDFs, images, iframes, embeds
     for tag in soup.find_all(["a", "iframe", "embed"]):
       href = tag.get("href") or tag.get("src") or ""
       full_url = clean_url(urljoin(page_url, href))
@@ -191,7 +219,9 @@ def extract_items_from_page(source_name, page_url):
 
       title = clean_text(tag.get_text(" ", strip=True))
       if not title or len(title) < 3:
-        title = clean_text(tag.get("title") or tag.get("aria-label") or "")
+        title = clean_text(
+            tag.get("title") or tag.get("aria-label") or ""
+        )
       if not title or len(title) < 3:
         path_part = urlparse(full_url).path.split("/")[-1]
         title = clean_text(re.sub(r"[-_]+", " ", path_part)) or "VMOU Update"
@@ -203,19 +233,43 @@ def extract_items_from_page(source_name, page_url):
           "kind": classify_file_type(full_url),
       })
 
+    # 2. All non-UI images (notices, circulars, posters, scans)
     for img in soup.find_all("img"):
-      src = clean_url(urljoin(page_url, img.get("src") or ""))
+      src = clean_url(
+          urljoin(
+              page_url,
+              img.get("src") or img.get("data-src") or img.get("data-lazy-src") or "",
+          )
+      )
       if not src or src in seen_local:
         continue
       alt_text = clean_text(img.get("alt") or img.get("title") or "")
+      if is_likely_ui_asset(src, alt_text):
+        continue
       if "vmou.ac.in" in src.lower() or any(
           w in (src + " " + alt_text).lower()
-          for w in ["notice", "exam", "mercy", "order", "circular", "regional"]
+          for w in [
+              "notice",
+              "exam",
+              "mercy",
+              "order",
+              "circular",
+              "regional",
+              "result",
+              "assignment",
+              "upload",
+              "media",
+              "news",
+          ]
       ):
         seen_local.add(src)
+        path_name = clean_text(
+            re.sub(r"[-_]+", " ", urlparse(src).path.split("/")[-1].rsplit(".", 1)[0])
+        )
+        final_title = alt_text or path_name or "VMOU Notice Image"
         items.append({
             "source": source_name,
-            "title": (alt_text or "VMOU Notice Image")[:220],
+            "title": final_title[:220],
             "url": src,
             "kind": "image",
         })
@@ -227,40 +281,41 @@ def extract_items_from_page(source_name, page_url):
 
 
 def build_caption(item):
-  title = clean_text(item.get("title", "VMOU Update"))
-  source = clean_text(item.get("source", "VMOU"))
+  title = escape_md(item.get("title", "VMOU Update"))[:180]
+  source = escape_md(item.get("source", "VMOU"))[:75]
   url = clean_url(item.get("url", ""))
   kind = item.get("kind", "link")
 
-  type_label = {
-      "image": "🖼️ Notice Image",
-      "document": "📄 Official Document / PDF",
-      "link": "🔗 Official Update Link",
-  }.get(kind, "📢 Official Update")
+  badge = {
+      "image": "🔥 *NEW IMAGE NOTICE*",
+      "document": "🔥 *NEW PDF / DOC*",
+      "link": "🔥 *NEW UPDATE*",
+  }.get(kind, "🔥 *VMOU UPDATE*")
 
-  header = "📢 *VMOU KOTA — नया अपडेट*\n\n"
+  header = f"📢 *VMOU KOTA ALERT* | {badge}\n\n"
   footer = f"\n\n{PROMO_FOOTER}"
 
   body_lines = [
-      f"📌 *विषय:* {title}",
-      f"🏛️ *स्रोत:* {source}",
-      f"🗂️ *प्रकार:* {type_label}",
+      f"📌 *{title}*",
+      f"🏛️ *{source}*",
   ]
-  if url:
-    body_lines.append(f"🔗 *लिंक:* {url}")
+  if url and kind == "link":
+    body_lines.append(f"🔗 {url}")
+  elif url:
+    body_lines.append(f"📎 {url}")
 
   caption = header + "\n".join(body_lines) + footer
   if len(caption) > 1024:
-    max_body_len = 1024 - len(header) - len(footer) - 10
-    trimmed_body = ("\n".join(body_lines))[: max(50, max_body_len)]
-    caption = header + trimmed_body + "..." + footer
+    max_body_len = 1024 - len(header) - len(footer) - 5
+    trimmed_body = ("\n".join(body_lines))[: max(40, max_body_len)]
+    caption = header + trimmed_body + "…" + footer
   return caption[:1024]
 
 
 def download_binary(url_str):
   try:
     r = requests.get(clean_url(url_str), headers=HEADERS, timeout=35)
-    if r.status_code == 200 and r.content:
+    if r.status_code == 200 and r.content and len(r.content) > 150:
       ct = r.headers.get("Content-Type", "")
       return r.content, ct
   except Exception as e:
@@ -318,7 +373,7 @@ def send_telegram_item(item):
 
   msg_text = caption
   if len(msg_text) > 4096:
-    msg_text = msg_text[: 4096 - len(PROMO_FOOTER) - 4] + "...\n\n" + PROMO_FOOTER
+    msg_text = msg_text[: 4096 - len(PROMO_FOOTER) - 4] + "…\n\n" + PROMO_FOOTER
 
   try:
     res = requests.post(
@@ -388,4 +443,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-    

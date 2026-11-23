@@ -18,7 +18,6 @@ PROMO_FOOTER = "✅ VMOU KOTA की अपडेट सबसे पहले J
 
 STATE_FILE = "last_seen.json"
 
-# VMOU, Results, RSCIT/RKCL & Regional pages monitoring list
 VMOU_SOURCES = [
     {"name": "VMOU Main Home & Notices", "url": "https://www.vmou.ac.in/"},
     {
@@ -32,10 +31,6 @@ VMOU_SOURCES = [
     {
         "name": "VMOU Online Student Portal",
         "url": "https://online.vmou.ac.in/",
-    },
-    {
-        "name": "VMOU Examination & Results Info",
-        "url": "https://www.vmou.ac.in/examination-results",
     },
     {
         "name": "RSCIT / RKCL Result Portal",
@@ -66,8 +61,6 @@ DOC_EXTS = (
     ".pptx",
     ".zip",
     ".rar",
-    ".txt",
-    ".csv",
 )
 SKIP_IMG_KEYWORDS = (
     "logo",
@@ -85,6 +78,80 @@ SKIP_IMG_KEYWORDS = (
     "spinner",
     "loading",
     "spacer",
+    "banner",
+    "slider",
+    "header",
+    "footer",
+    "bg",
+    "background",
+)
+SKIP_URL_OR_TEXT = (
+    "login",
+    "signin",
+    "signup",
+    "register",
+    "privacy",
+    "disclaimer",
+    "terms",
+    "sitemap",
+    "contact",
+    "about-us",
+    "rti",
+    "tender",
+    "gallery",
+    "photo-gallery",
+    "video",
+    "feedback",
+    "helpdesk",
+    "forgot",
+    "password",
+)
+
+UPDATE_KEYWORDS = (
+    "notice",
+    "notification",
+    "circular",
+    "order",
+    "result",
+    "results",
+    "rscit",
+    "rkcl",
+    "exam",
+    "examination",
+    "admit",
+    "hall ticket",
+    "timetable",
+    "time table",
+    "schedule",
+    "assignment",
+    "practical",
+    "camp",
+    "regional",
+    "jaipur",
+    "jodhpur",
+    "ajmer",
+    "udaipur",
+    "kota",
+    "bikaner",
+    "bharatpur",
+    "mercy",
+    "revaluation",
+    "supplementary",
+    "admission",
+    "counselling",
+    "counseling",
+    "date sheet",
+    "datesheet",
+    "विज्ञप्ति",
+    "सूचना",
+    "परिणाम",
+    "रिजल्ट",
+    "परीक्षा",
+    "आदेश",
+    "प्रवेश पत्र",
+    "सत्रीय कार्य",
+    "प्रायोगिक",
+    "क्षेत्रीय",
 )
 
 _BOLD_UPPER = "𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭"
@@ -93,7 +160,6 @@ _BOLD_DIGIT = "𝟬𝟭𝟮𝟯𝟰𝟱𝟲𝟳𝟴𝟵"
 
 
 def to_bold(text_str):
-  """Convert ASCII letters and digits into clean Unicode bold characters."""
   out = []
   for ch in str(text_str or ""):
     if "A" <= ch <= "Z":
@@ -161,51 +227,6 @@ def save_state(state):
     print(f"Error saving {STATE_FILE}: {e}")
 
 
-def is_vmou_or_regional_link(url_str):
-  u = clean_url(url_str).lower()
-  if not u.startswith(("http://", "https://")):
-    return False
-  parsed = urlparse(u)
-  if not parsed.netloc:
-    return False
-  keywords = [
-      "vmou",
-      "rkcl",
-      "rscit",
-      "rscit_result",
-      "result",
-      "results",
-      "notice",
-      "circular",
-      "order",
-      "exam",
-      "admit",
-      "assignment",
-      "practical",
-      "regional",
-      "jaipur",
-      "jodhpur",
-      "ajmer",
-      "udaipur",
-      "kota",
-      "bikaner",
-      "bharatpur",
-      "mercy",
-      "notification",
-      "timetable",
-      "schedule",
-      ".pdf",
-      ".jpg",
-      ".jpeg",
-      ".png",
-      ".doc",
-      ".docx",
-  ]
-  if any(d in parsed.netloc for d in ("vmou.ac.in", "rkcl.in", "rkcl.vmou.ac.in")):
-    return True
-  return any(k in u for k in keywords)
-
-
 def classify_file_type(url_str, content_type=""):
   lower_u = clean_url(url_str).lower().split("?")[0]
   ct = str(content_type or "").lower()
@@ -219,6 +240,25 @@ def classify_file_type(url_str, content_type=""):
 def is_likely_ui_asset(url_str, alt_text=""):
   combined = f"{clean_url(url_str).lower()} {clean_text(alt_text).lower()}"
   return any(bad in combined for bad in SKIP_IMG_KEYWORDS)
+
+
+def is_relevant_update(url_str, title_str, kind):
+  u = clean_url(url_str).lower()
+  t = clean_text(title_str).lower()
+  if not u.startswith(("http://", "https://")):
+    return False
+  parsed = urlparse(u)
+  if not parsed.netloc:
+    return False
+  if any(bad in u or bad in t for bad in SKIP_URL_OR_TEXT):
+    return False
+  # PDF or document links from VMOU / RKCL are high-value notices/results
+  if kind == "document" and any(
+      d in parsed.netloc for d in ("vmou.ac.in", "rkcl.in", "rkcl.vmou.ac.in")
+  ):
+    return True
+  combined = f"{u} {t}"
+  return any(kw in combined for kw in UPDATE_KEYWORDS)
 
 
 def extract_items_from_page(source_name, page_url):
@@ -237,26 +277,26 @@ def extract_items_from_page(source_name, page_url):
       full_url = clean_url(urljoin(page_url, href))
       if not full_url or full_url.startswith(("javascript:", "mailto:", "#")):
         continue
-      if not is_vmou_or_regional_link(full_url):
-        continue
       if full_url in seen_local:
         continue
-      seen_local.add(full_url)
 
       title = clean_text(tag.get_text(" ", strip=True))
       if not title or len(title) < 3:
-        title = clean_text(
-            tag.get("title") or tag.get("aria-label") or ""
-        )
+        title = clean_text(tag.get("title") or tag.get("aria-label") or "")
       if not title or len(title) < 3:
         path_part = urlparse(full_url).path.split("/")[-1]
         title = clean_text(re.sub(r"[-_]+", " ", path_part)) or "VMOU Update"
 
+      kind = classify_file_type(full_url)
+      if not is_relevant_update(full_url, title, kind):
+        continue
+
+      seen_local.add(full_url)
       items.append({
           "source": source_name,
           "title": title[:220],
           "url": full_url,
-          "kind": classify_file_type(full_url),
+          "kind": kind,
       })
 
     for img in soup.find_all("img"):
@@ -274,52 +314,34 @@ def extract_items_from_page(source_name, page_url):
       alt_text = clean_text(img.get("alt") or img.get("title") or "")
       if is_likely_ui_asset(src, alt_text):
         continue
-      if (
-          any(d in src.lower() for d in ("vmou.ac.in", "rkcl.in"))
-          or any(
-              w in (src + " " + alt_text).lower()
-              for w in [
-                  "notice",
-                  "exam",
-                  "result",
-                  "rscit",
-                  "rkcl",
-                  "mercy",
-                  "order",
-                  "circular",
-                  "regional",
-                  "assignment",
-                  "upload",
-                  "media",
-                  "news",
-              ]
-          )
-      ):
-        seen_local.add(src)
-        path_name = clean_text(
-            re.sub(
-                r"[-_]+",
-                " ",
-                urlparse(src).path.split("/")[-1].rsplit(".", 1)[0],
-            )
-        )
-        final_title = alt_text or path_name or "VMOU Notice Image"
-        items.append({
-            "source": source_name,
-            "title": final_title[:220],
-            "url": src,
-            "kind": "image",
-        })
+      if not is_relevant_update(src, alt_text, "image"):
+        continue
 
-    print(f"[{source_name}] Found {len(items)} candidate items.")
+      seen_local.add(src)
+      path_name = clean_text(
+          re.sub(
+              r"[-_]+",
+              " ",
+              urlparse(src).path.split("/")[-1].rsplit(".", 1)[0],
+          )
+      )
+      final_title = alt_text or path_name or "VMOU Notice Image"
+      items.append({
+          "source": source_name,
+          "title": final_title[:220],
+          "url": src,
+          "kind": "image",
+      })
+
+    print(f"[{source_name}] Found {len(items)} relevant items.")
   except Exception as e:
     print(f"[{source_name}] Error fetching page: {e}")
   return items
 
 
 def build_caption(item):
-  title = clean_text(item.get("title", "VMOU Update"))[:150]
-  source = clean_text(item.get("source", "VMOU"))[:65]
+  title = clean_text(item.get("title", "VMOU Update"))[:140]
+  source = clean_text(item.get("source", "VMOU"))[:60]
   url = clean_url(item.get("url", ""))
   kind = item.get("kind", "link")
 
@@ -496,3 +518,4 @@ def main():
 
 if __name__ == "__main__":
   main()
+    

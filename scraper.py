@@ -6,7 +6,7 @@ import os
 import re
 import sys
 import time
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 from bs4 import BeautifulSoup
 import requests
 
@@ -62,6 +62,7 @@ DOC_EXTS = (
     ".zip",
     ".rar",
 )
+
 SKIP_IMG_KEYWORDS = (
     "logo",
     "icon",
@@ -84,7 +85,17 @@ SKIP_IMG_KEYWORDS = (
     "footer",
     "bg",
     "background",
+    "counter",
+    "headercounter",
+    "headercounterimages",
+    "visitor",
+    "hitcounter",
+    "stats",
+    "badge",
+    "qr",
+    "captcha",
 )
+
 SKIP_URL_OR_TEXT = (
     "login",
     "signin",
@@ -105,6 +116,9 @@ SKIP_URL_OR_TEXT = (
     "helpdesk",
     "forgot",
     "password",
+    "headercounterimages",
+    "headercounter",
+    "hitcounter",
 )
 
 UPDATE_KEYWORDS = (
@@ -154,6 +168,24 @@ UPDATE_KEYWORDS = (
     "क्षेत्रीय",
 )
 
+VOLATILE_QUERY_KEYS = {
+    "expires",
+    "signature",
+    "key-pair-id",
+    "policy",
+    "x-amz-signature",
+    "x-amz-credential",
+    "x-amz-date",
+    "x-amz-expires",
+    "x-amz-security-token",
+    "token",
+    "ts",
+    "time",
+    "timestamp",
+    "v",
+    "ver",
+}
+
 _BOLD_UPPER = "𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭"
 _BOLD_LOWER = "𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇"
 _BOLD_DIGIT = "𝟬𝟭𝟮𝟯𝟰𝟱𝟲𝟳𝟴𝟵"
@@ -181,6 +213,31 @@ def clean_url(url_str):
   return str(url_str or "").strip().strip("()[]\"'").strip()
 
 
+def canonical_url(url_str):
+  """Remove volatile signed/cache query params so repeated token refreshes stay identical."""
+  u = clean_url(url_str)
+  if not u:
+    return ""
+  try:
+    parsed = urlparse(u)
+    kept_q = [
+        (k, v)
+        for k, v in parse_qsl(parsed.query, keep_blank_values=True)
+        if k.lower() not in VOLATILE_QUERY_KEYS
+    ]
+    clean_q = urlencode(kept_q)
+    return urlunparse((
+        parsed.scheme.lower(),
+        parsed.netloc.lower(),
+        parsed.path,
+        parsed.params,
+        clean_q,
+        "",
+    ))
+  except Exception:
+    return u.split("?")[0]
+
+
 def make_id(raw_str):
   return hashlib.sha256(str(raw_str or "").encode("utf-8")).hexdigest()[:24]
 
@@ -206,9 +263,13 @@ def load_state():
               if isinstance(data.get("seen_urls"), list)
               else []
           )
-          return {"seen_ids": seen_ids, "seen_urls": seen_urls}
+          norm_urls = [canonical_url(x) for x in seen_urls if clean_url(x)]
+          return {"seen_ids": seen_ids, "seen_urls": norm_urls}
         if isinstance(data, list):
-          return {"seen_ids": [], "seen_urls": [clean_url(x) for x in data]}
+          return {
+              "seen_ids": [],
+              "seen_urls": [canonical_url(x) for x in data if clean_url(x)],
+          }
     except Exception as e:
       print(f"Error reading {STATE_FILE}: {e}")
   return {"seen_ids": [], "seen_urls": []}
@@ -239,7 +300,17 @@ def classify_file_type(url_str, content_type=""):
 
 def is_likely_ui_asset(url_str, alt_text=""):
   combined = f"{clean_url(url_str).lower()} {clean_text(alt_text).lower()}"
-  return any(bad in combined for bad in SKIP_IMG_KEYWORDS)
+  if any(bad in combined for bad in SKIP_IMG_KEYWORDS):
+    return True
+  # Block numeric-only filenames like "1725618914.png" (often counters/widgets)
+  try:
+    path_file = urlparse(clean_url(url_str)).path.split("/")[-1]
+    stem = path_file.rsplit(".", 1)[0] if "." in path_file else path_file
+    if stem.isdigit() and len(stem) >= 6:
+      return True
+  except Exception:
+    pass
+  return False
 
 
 def is_relevant_update(url_str, title_str, kind):
@@ -252,11 +323,17 @@ def is_relevant_update(url_str, title_str, kind):
     return False
   if any(bad in u or bad in t for bad in SKIP_URL_OR_TEXT):
     return False
-  # PDF or document links from VMOU / RKCL are high-value notices/results
+
+  # If title is purely a long number (like counter IDs), skip it
+  stripped_t = clean_text(title_str)
+  if stripped_t.isdigit() and len(stripped_t) >= 5:
+    return False
+
   if kind == "document" and any(
       d in parsed.netloc for d in ("vmou.ac.in", "rkcl.in", "rkcl.vmou.ac.in")
   ):
     return True
+
   combined = f"{u} {t}"
   return any(kw in combined for kw in UPDATE_KEYWORDS)
 
@@ -277,7 +354,8 @@ def extract_items_from_page(source_name, page_url):
       full_url = clean_url(urljoin(page_url, href))
       if not full_url or full_url.startswith(("javascript:", "mailto:", "#")):
         continue
-      if full_url in seen_local:
+      c_url = canonical_url(full_url)
+      if c_url in seen_local:
         continue
 
       title = clean_text(tag.get_text(" ", strip=True))
@@ -291,11 +369,12 @@ def extract_items_from_page(source_name, page_url):
       if not is_relevant_update(full_url, title, kind):
         continue
 
-      seen_local.add(full_url)
+      seen_local.add(c_url)
       items.append({
           "source": source_name,
           "title": title[:220],
           "url": full_url,
+          "canonical_url": c_url,
           "kind": kind,
       })
 
@@ -309,7 +388,10 @@ def extract_items_from_page(source_name, page_url):
               or "",
           )
       )
-      if not src or src in seen_local:
+      if not src:
+        continue
+      c_url = canonical_url(src)
+      if c_url in seen_local:
         continue
       alt_text = clean_text(img.get("alt") or img.get("title") or "")
       if is_likely_ui_asset(src, alt_text):
@@ -317,7 +399,7 @@ def extract_items_from_page(source_name, page_url):
       if not is_relevant_update(src, alt_text, "image"):
         continue
 
-      seen_local.add(src)
+      seen_local.add(c_url)
       path_name = clean_text(
           re.sub(
               r"[-_]+",
@@ -330,6 +412,7 @@ def extract_items_from_page(source_name, page_url):
           "source": source_name,
           "title": final_title[:220],
           "url": src,
+          "canonical_url": c_url,
           "kind": "image",
       })
 
@@ -457,7 +540,7 @@ def main():
 
   state = load_state()
   seen_ids = set(state.get("seen_ids", []))
-  seen_urls = set(state.get("seen_urls", []))
+  seen_urls = set(canonical_url(x) for x in state.get("seen_urls", []) if x)
 
   collected = []
   for src in VMOU_SOURCES:
@@ -467,14 +550,14 @@ def main():
   if seed_only:
     seeded = 0
     for it in collected:
-      u = clean_url(it.get("url", ""))
+      c_u = it.get("canonical_url") or canonical_url(it.get("url", ""))
       t = clean_text(it.get("title", ""))
-      item_id = make_id(f"{u}|{t}")
+      item_id = make_id(f"{c_u}|{t}")
       if item_id not in seen_ids:
         seen_ids.add(item_id)
         seeded += 1
-      if u and u not in seen_urls:
-        seen_urls.add(u)
+      if c_u and c_u not in seen_urls:
+        seen_urls.add(c_u)
     state["seen_ids"] = list(seen_ids)
     state["seen_urls"] = list(seen_urls)
     save_state(state)
@@ -486,11 +569,12 @@ def main():
 
   new_items = []
   for it in collected:
-    u = clean_url(it.get("url", ""))
+    c_u = it.get("canonical_url") or canonical_url(it.get("url", ""))
     t = clean_text(it.get("title", ""))
-    item_id = make_id(f"{u}|{t}")
-    if item_id not in seen_ids and (not u or u not in seen_urls):
+    item_id = make_id(f"{c_u}|{t}")
+    if item_id not in seen_ids and (not c_u or c_u not in seen_urls):
       it["id"] = item_id
+      it["canonical_url"] = c_u
       new_items.append(it)
 
   print(f"Total new VMOU/Regional items detected: {len(new_items)}")
@@ -501,8 +585,8 @@ def main():
   for it in new_items:
     if send_telegram_item(it):
       seen_ids.add(it["id"])
-      if it.get("url"):
-        seen_urls.add(clean_url(it["url"]))
+      if it.get("canonical_url"):
+        seen_urls.add(it["canonical_url"])
       posted += 1
       print(f"Posted ({posted}/{len(new_items)}): {it.get('title')[:70]}")
     time.sleep(1.5)
@@ -518,4 +602,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-    

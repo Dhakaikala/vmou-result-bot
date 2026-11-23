@@ -18,7 +18,7 @@ PROMO_FOOTER = "✅ VMOU KOTA की अपडेट सबसे पहले J
 
 STATE_FILE = "last_seen.json"
 
-# VMOU & Regional pages monitoring list (5 core VMOU/Regional endpoints)
+# VMOU, Results, RSCIT/RKCL & Regional pages monitoring list
 VMOU_SOURCES = [
     {"name": "VMOU Main Home & Notices", "url": "https://www.vmou.ac.in/"},
     {
@@ -26,16 +26,24 @@ VMOU_SOURCES = [
         "url": "https://www.vmou.ac.in/news",
     },
     {
-        "name": "VMOU Examination & Admit Card Updates",
-        "url": "https://www.vmou.ac.in/examination",
+        "name": "VMOU Online Results Portal",
+        "url": "https://online.vmou.ac.in/result.aspx",
     },
     {
-        "name": "VMOU Assignment & Practical Updates",
-        "url": "https://www.vmou.ac.in/assignments",
+        "name": "VMOU Online Student Portal",
+        "url": "https://online.vmou.ac.in/",
     },
     {
-        "name": "VMOU Regional Centres Directory & Notices",
-        "url": "https://www.vmou.ac.in/regional-centres",
+        "name": "VMOU Examination & Results Info",
+        "url": "https://www.vmou.ac.in/examination-results",
+    },
+    {
+        "name": "RSCIT / RKCL Result Portal",
+        "url": "https://rkcl.vmou.ac.in/",
+    },
+    {
+        "name": "RKCL Official Results",
+        "url": "https://www.rkcl.in/",
     },
 ]
 
@@ -162,11 +170,15 @@ def is_vmou_or_regional_link(url_str):
     return False
   keywords = [
       "vmou",
+      "rkcl",
+      "rscit",
+      "rscit_result",
+      "result",
+      "results",
       "notice",
       "circular",
       "order",
       "exam",
-      "result",
       "admit",
       "assignment",
       "practical",
@@ -189,7 +201,7 @@ def is_vmou_or_regional_link(url_str):
       ".doc",
       ".docx",
   ]
-  if "vmou.ac.in" in parsed.netloc:
+  if any(d in parsed.netloc for d in ("vmou.ac.in", "rkcl.in", "rkcl.vmou.ac.in")):
     return True
   return any(k in u for k in keywords)
 
@@ -262,21 +274,26 @@ def extract_items_from_page(source_name, page_url):
       alt_text = clean_text(img.get("alt") or img.get("title") or "")
       if is_likely_ui_asset(src, alt_text):
         continue
-      if "vmou.ac.in" in src.lower() or any(
-          w in (src + " " + alt_text).lower()
-          for w in [
-              "notice",
-              "exam",
-              "mercy",
-              "order",
-              "circular",
-              "regional",
-              "result",
-              "assignment",
-              "upload",
-              "media",
-              "news",
-          ]
+      if (
+          any(d in src.lower() for d in ("vmou.ac.in", "rkcl.in"))
+          or any(
+              w in (src + " " + alt_text).lower()
+              for w in [
+                  "notice",
+                  "exam",
+                  "result",
+                  "rscit",
+                  "rkcl",
+                  "mercy",
+                  "order",
+                  "circular",
+                  "regional",
+                  "assignment",
+                  "upload",
+                  "media",
+                  "news",
+              ]
+          )
       ):
         seen_local.add(src)
         path_name = clean_text(
